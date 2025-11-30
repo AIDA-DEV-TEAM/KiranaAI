@@ -34,16 +34,12 @@ const CustomerView = () => {
             processedQueryRef.current = query;
             setTranscript(query);
             handleVoiceQuery(query);
-
-            // Optional: Clear state to prevent re-processing on simple re-renders
-            // But we use ref to track processed query so it's fine.
         }
     }, [location.state]);
 
     useEffect(() => {
         isMounted.current = true;
         if (!SpeechRecognition) return;
-        // ... rest of the code ...
 
         // Create a fresh instance every time we mount or isAlwaysOn changes
         const recognition = new SpeechRecognition();

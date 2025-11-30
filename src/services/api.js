@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://kirana-app-test.loca.lt';
+const API_URL = 'https://kiranaai.onrender.com';
 
 export const api = axios.create({
     baseURL: API_URL,
