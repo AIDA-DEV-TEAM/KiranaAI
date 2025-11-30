@@ -1,0 +1,62 @@
+[
+    {
+        "name": "Basmati Rice",
+        "category": "Grains",
+        "price": 120.0,
+        "stock": 50
+    },
+    {
+        "name": "Toor Dal",
+        "category": "Pulses",
+        "price": 150.0,
+        "stock": 30
+    },
+    {
+        "name": "Sunflower Oil",
+        "category": "Oil",
+        "price": 180.0,
+        "stock": 20
+    },
+    {
+        "name": "Sugar",
+        "category": "Sweeteners",
+        "price": 45.0,
+        "stock": 100
+    },
+    {
+        "name": "Tata Salt",
+        "category": "Spices",
+        "price": 25.0,
+        "stock": 200
+    },
+    {
+        "name": "Red Chilli Powder",
+        "category": "Spices",
+        "price": 300.0,
+        "stock": 15
+    },
+    {
+        "name": "Turmeric Powder",
+        "category": "Spices",
+        "price": 250.0,
+        "stock": 18
+    },
+    {
+        "name": "Wheat Flour",
+        "category": "Grains",
+        "price": 40.0,
+        "stock": 60
+    },
+    {
+        "name": "Milk",
+        "category": "Dairy",
+        "price": 30.0,
+        "stock": 10
+    },
+    {
+        "name": "Curd",
+        "category": "Dairy",
+        "price": 35.0,
+        "stock": 12
+    }
+]

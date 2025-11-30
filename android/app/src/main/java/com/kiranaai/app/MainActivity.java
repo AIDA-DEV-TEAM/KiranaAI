@@ -9,14 +9,7 @@ import android.webkit.WebView;
 
 public class MainActivity extends BridgeActivity {
     @Override
-    public void onStart() {
-        super.onStart();
-        WebView webView = getBridge().getWebView();
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onPermissionRequest(final PermissionRequest request) {
-                request.grant(request.getResources());
-            }
-        });
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
     }
 }
