@@ -1,4 +1,4 @@
-from database import init_db, SessionLocal, Product, Sale
+from .database import init_db, SessionLocal, Product, Sale
 from datetime import datetime, timedelta
 import random
 
