@@ -1,220 +1,340 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Mic, MicOff, Volume2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 import { chatWithData } from '../services/api';
+
 import { useLocation } from 'react-router-dom';
-import { cn } from '../lib/utils';
-import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 
 const CustomerView = () => {
     const location = useLocation();
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
-    const [response, setResponse] = useState("Tap the microphone to start speaking...");
-    const [isLoading, setIsLoading] = useState(false);
+    const [response, setResponse] = useState('');
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [hasPermission, setHasPermission] = useState(false);
+    const [isAlwaysOn, setIsAlwaysOn] = useState(false);
+    const [wakeLock, setWakeLock] = useState(null);
 
+    // Ref to handle pause state without triggering re-renders or dependency loops
+    const isPausedForSpeaking = useRef(false);
+    const recognitionRef = useRef(null);
     const isMounted = useRef(true);
+    const processedQueryRef = useRef(null);
 
-    useEffect(() => {
-        isMounted.current = true;
-
-        // Check permissions on mount
-        SpeechRecognition.checkPermissions().then((result) => {
-            if (result.speechRecognition === 'granted') {
-                setHasPermission(true);
-            } else {
-                SpeechRecognition.requestPermissions().then((res) => {
-                    if (res.speechRecognition === 'granted') setHasPermission(true);
-                });
-            }
-        });
-
-        return () => {
-            isMounted.current = false;
-            SpeechRecognition.stop();
-            if (window.speechSynthesis) {
-                window.speechSynthesis.cancel();
-            }
-        };
-    }, []);
+    // Speech Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     // Handle Auto-Query from Deep Link
     useEffect(() => {
-        if (location.state?.autoQuery) {
-            setTranscript(location.state.autoQuery);
-            handleSend(location.state.autoQuery);
+        if (location.state?.autoQuery && location.state.autoQuery !== processedQueryRef.current) {
+            const query = location.state.autoQuery;
+            console.log("Processing auto-query:", query);
+            processedQueryRef.current = query;
+            setTranscript(query);
+            handleVoiceQuery(query);
+
+            // Optional: Clear state to prevent re-processing on simple re-renders
+            // But we use ref to track processed query so it's fine.
         }
     }, [location.state]);
 
-    const toggleListening = async () => {
-        if (!hasPermission) {
-            const res = await SpeechRecognition.requestPermissions();
-            if (res.speechRecognition !== 'granted') {
-                alert("Microphone permission is required.");
-                return;
-            }
-            setHasPermission(true);
-        }
+    useEffect(() => {
+        isMounted.current = true;
+        if (!SpeechRecognition) return;
+        // ... rest of the code ...
 
-        if (isListening) {
-            await SpeechRecognition.stop();
-            setIsListening(false);
-        } else {
-            setTranscript('');
-            setResponse("Listening...");
-            setIsListening(true);
+        // Create a fresh instance every time we mount or isAlwaysOn changes
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
 
-            try {
-                await SpeechRecognition.start({
-                    language: "en-IN",
-                    maxResults: 1,
-                    prompt: "Speak now...",
-                    partialResults: true,
-                    popup: false,
-                });
+        recognition.continuous = isAlwaysOn;
+        recognition.lang = 'en-IN';
+        recognition.interimResults = false;
 
-                // Add listener for partial results if supported or just wait for final?
-                // The plugin usually returns matches in a listener or promise?
-                // Actually, the start method might not return the text directly in all versions.
-                // We need to add a listener.
+        recognition.onresult = (event) => {
+            if (!isMounted.current) return;
+            const results = event.results;
+            const text = results[results.length - 1][0].transcript;
+            console.log("Recognized:", text);
+            handleVoiceQuery(text);
+        };
 
-                SpeechRecognition.addListener('partialResults', (data) => {
-                    if (data.matches && data.matches.length > 0 && isMounted.current) {
-                        setTranscript(data.matches[0]);
-                    }
-                });
+        recognition.onend = () => {
+            if (!isMounted.current) return;
+            if (document.hidden) return; // Don't auto-restart if tab is hidden
 
-            } catch (e) {
-                console.error("Start error:", e);
+            console.log("Recognition ended");
+            // Only auto-restart if we are NOT paused for speaking
+            if (isAlwaysOn && !isPausedForSpeaking.current) {
+                console.log("Restarting recognition (Always On)...");
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error("Failed to restart:", e);
+                }
+            } else if (!isAlwaysOn) {
                 setIsListening(false);
             }
+        };
+
+        recognition.onerror = (event) => {
+            if (!isMounted.current) return;
+            if (document.hidden) return; // Don't retry if tab is hidden
+
+            console.error("Speech recognition error", event.error);
+            if (isAlwaysOn && event.error !== 'aborted' && !isPausedForSpeaking.current) {
+                setTimeout(() => {
+                    if (isMounted.current && !document.hidden) {
+                        try {
+                            recognition.start();
+                        } catch (e) { console.error("Retry failed", e); }
+                    }
+                }, 1000);
+            }
+        };
+
+        // Auto-start if Always On is enabled (with delay for stability)
+        if (isAlwaysOn) {
+            setTimeout(() => {
+                if (isMounted.current && !document.hidden) {
+                    try {
+                        recognition.start();
+                        setIsListening(true);
+                    } catch (e) {
+                        console.error("Failed to auto-start:", e);
+                    }
+                }
+            }, 500);
+        }
+
+        return () => {
+            isMounted.current = false;
+            if (recognition) {
+                recognition.abort(); // Use abort for immediate stop
+            }
+        };
+    }, [isAlwaysOn]);
+
+    // Handle Browser Tab Switching (Visibility Change)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // If user leaves the tab, turn OFF Always On mode
+                console.log("Tab hidden: Disabling Always On Mode");
+                setIsAlwaysOn(false);
+
+                const recognition = recognitionRef.current;
+                if (recognition) {
+                    recognition.abort();
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
+
+    // Wake Lock Logic
+    useEffect(() => {
+        const requestWakeLock = async () => {
+            if ('wakeLock' in navigator && isAlwaysOn) {
+                try {
+                    const lock = await navigator.wakeLock.request('screen');
+                    setWakeLock(lock);
+                    console.log('Wake Lock active');
+                } catch (err) {
+                    console.error(`${err.name}, ${err.message}`);
+                }
+            }
+        };
+
+        const releaseWakeLock = async () => {
+            if (wakeLock) {
+                await wakeLock.release();
+                setWakeLock(null);
+                console.log('Wake Lock released');
+            }
+        };
+
+        if (isAlwaysOn) {
+            requestWakeLock();
+        } else {
+            releaseWakeLock();
+        }
+
+        return () => releaseWakeLock();
+    }, [isAlwaysOn]);
+
+    const toggleListening = () => {
+        if (!SpeechRecognition) {
+            alert("Voice recognition not supported in this browser.");
+            return;
+        }
+
+        const recognition = recognitionRef.current;
+        if (!recognition) return;
+
+        if (isListening) {
+            recognition.stop();
+            setIsAlwaysOn(false);
+            setIsListening(false);
+        } else {
+            recognition.start();
+            setIsListening(true);
+            setTranscript("Listening...");
         }
     };
 
-    // Add listener for final results outside toggle
-    useEffect(() => {
-        const resultListener = SpeechRecognition.addListener('listeningState', (data) => {
-            if (!data.status && isListening) {
-                // Stopped
-                setIsListening(false);
+    const toggleAlwaysOn = () => {
+        if (!SpeechRecognition) return;
+
+        const newState = !isAlwaysOn;
+        setIsAlwaysOn(newState);
+        isPausedForSpeaking.current = false; // Reset pause state
+
+        // The useEffect will handle the restart because isAlwaysOn changes
+    };
+
+    const handleVoiceQuery = async (text) => {
+        // Wake Word Logic
+        if (isAlwaysOn) {
+            const wakeWord = "kirana";
+            const lowerText = text.toLowerCase();
+
+            if (!lowerText.includes(wakeWord)) {
+                console.log("Ignored (No wake word):", text);
+                return;
             }
-        });
 
-        // Note: The plugin API varies. Some versions use 'partialResults' and 'matches'.
-        // Let's assume standard behavior: we might need to handle the result in a separate listener.
-        // Actually, for this plugin, usually we just get 'partialResults'.
+            // Only show transcript if wake word is detected
+            setTranscript(text);
+        } else {
+            setTranscript(text);
+        }
 
-        return () => {
-            resultListener.remove();
-            SpeechRecognition.removeAllListeners();
-        };
-    }, [isListening]);
-
+        try {
+            const res = await chatWithData(text);
+            setResponse(res.response);
+            speakResponse(res.response);
+        } catch (error) {
+            console.error("Error processing voice query:", error);
+            setResponse("Sorry, I couldn't understand that.");
+        }
+    };
 
     const speakResponse = (text) => {
-        if ('speechSynthesis' in window && window.speechSynthesis) {
+        if ('speechSynthesis' in window) {
+            // Cancel any ongoing speech
             window.speechSynthesis.cancel();
+
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onstart = () => {
-                if (isMounted.current) setIsSpeaking(true);
-            };
+            setIsSpeaking(true);
+
+            // Pause recognition while speaking
+            const recognition = recognitionRef.current;
+            if (isAlwaysOn && recognition) {
+                isPausedForSpeaking.current = true;
+                recognition.stop();
+                console.log("Paused recognition for speech");
+            }
+
             utterance.onend = () => {
-                if (isMounted.current) setIsSpeaking(false);
+                setIsSpeaking(false);
+                // Resume recognition after speaking
+                if (isAlwaysOn && recognition) {
+                    console.log("Resuming recognition after speech");
+                    isPausedForSpeaking.current = false;
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error("Failed to resume:", e);
+                    }
+                }
             };
+
             window.speechSynthesis.speak(utterance);
         }
     };
 
-    const handleSend = async (text) => {
-        if (!text.trim()) return;
-        setIsLoading(true);
-
-        try {
-            const data = await chatWithData(text, []);
-
-            if (!isMounted.current) return;
-
-            setResponse(data.response);
-            speakResponse(data.response);
-        } catch (error) {
-            console.error(error);
-            if (isMounted.current) {
-                setResponse("Sorry, I had trouble connecting to the server.");
-            }
-        } finally {
-            if (isMounted.current) setIsLoading(false);
-        }
-    };
-
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-b from-slate-900 to-slate-800 text-white p-6 relative overflow-hidden">
+        <div className="flex flex-col items-center justify-center min-h-[80vh] p-4 text-center space-y-8">
+            <h1 className="text-3xl font-bold text-gray-800">Customer Assistant</h1>
 
-            {/* Background Elements */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-10">
-                <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-10 right-10 w-64 h-64 bg-purple-500 rounded-full blur-3xl"></div>
+            {/* Always On Toggle */}
+            <div className="flex items-center gap-3 bg-white p-3 rounded-full shadow-sm border border-gray-200">
+                <span className="text-sm font-medium text-gray-600">Always On Mode</span>
+                <button
+                    onClick={toggleAlwaysOn}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${isAlwaysOn ? 'bg-green-500' : 'bg-gray-300'}`}
+                >
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${isAlwaysOn ? 'left-7' : 'left-1'}`} />
+                </button>
             </div>
 
-            {/* Header */}
-            <div className="relative z-10 flex justify-between items-center mb-8">
-                <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                    Kirana Assistant
-                </h1>
-                {isSpeaking && <Volume2 className="text-green-400 animate-pulse" size={24} />}
-            </div>
-
-            {/* Main Content */}
-            <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-8 text-center">
-
-                {/* Response Area */}
-                <div className="w-full max-w-md min-h-[150px] flex items-center justify-center">
-                    {isLoading ? (
-                        <Loader2 className="w-12 h-12 text-blue-400 animate-spin" />
-                    ) : (
-                        <p className={cn(
-                            "text-xl md:text-2xl font-medium leading-relaxed transition-all duration-500",
-                            response === "Listening..." ? "text-blue-300 animate-pulse" : "text-slate-100"
-                        )}>
-                            "{response}"
-                        </p>
-                    )}
-                </div>
-
-                {/* Transcript Area */}
-                {transcript && (
-                    <div className="bg-white/10 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10">
-                        <p className="text-sm text-slate-300">You said: <span className="text-white font-medium">{transcript}</span></p>
-                    </div>
+            <div className="relative">
+                <button
+                    onClick={toggleListening}
+                    className={`w-32 h-32 rounded-full flex items-center justify-center shadow-lg transition-all ${isListening
+                        ? isAlwaysOn ? 'bg-green-500 animate-pulse ring-4 ring-green-200' : 'bg-red-500 animate-pulse'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
+                >
+                    {isListening ? <MicOff size={48} className="text-white" /> : <Mic size={48} className="text-white" />}
+                </button>
+                {isListening && (
+                    <p className="mt-4 text-gray-600 font-medium">
+                        {isAlwaysOn ? "Always Listening..." : "Listening..."}
+                    </p>
                 )}
-
-                {/* Mic Button */}
-                <div className="relative group">
-                    <div className={cn(
-                        "absolute inset-0 bg-blue-500 rounded-full blur-xl transition-all duration-300 opacity-0",
-                        isListening ? "opacity-50 scale-150" : "group-hover:opacity-30"
-                    )}></div>
-                    <button
-                        onClick={toggleListening}
-                        className={cn(
-                            "relative w-24 h-24 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 border-4",
-                            isListening
-                                ? "bg-red-500 border-red-400 scale-110"
-                                : "bg-blue-600 border-blue-400 hover:scale-105"
-                        )}
-                    >
-                        {isListening ? (
-                            <MicOff size={40} className="text-white" />
-                        ) : (
-                            <Mic size={40} className="text-white" />
-                        )}
-                    </button>
-                </div>
-
-                <p className="text-slate-400 text-sm">
-                    {isListening ? "Listening..." : "Tap to speak"}
-                </p>
             </div>
+
+            {transcript && (
+                <div className="bg-gray-100 p-4 rounded-lg max-w-md w-full">
+                    <p className="text-sm text-gray-500 mb-1">You said:</p>
+                    <p className="text-lg font-medium text-gray-800">"{transcript}"</p>
+                </div>
+            )}
+
+            {response && (
+                <div className="bg-green-50 border border-green-200 p-6 rounded-lg max-w-md w-full shadow-sm">
+                    <div className="flex items-center justify-center gap-2 mb-2 text-green-700">
+                        <Volume2 size={24} className={isSpeaking ? 'animate-bounce' : ''} />
+                        <span className="font-bold">Assistant</span>
+                    </div>
+                    <div className="prose prose-sm max-w-none text-left">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeHighlight]}
+                            components={{
+                                table: ({ node, ...props }) => (
+                                    <div className="overflow-x-auto my-4 rounded-lg border border-green-200 shadow-sm bg-white">
+                                        <table className="min-w-full divide-y divide-green-100" {...props} />
+                                    </div>
+                                ),
+                                thead: ({ node, ...props }) => (
+                                    <thead className="bg-green-100" {...props} />
+                                ),
+                                th: ({ node, ...props }) => (
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider" {...props} />
+                                ),
+                                tbody: ({ node, ...props }) => (
+                                    <tbody className="bg-white divide-y divide-green-50" {...props} />
+                                ),
+                                tr: ({ node, ...props }) => (
+                                    <tr className="hover:bg-green-50 transition-colors" {...props} />
+                                ),
+                                td: ({ node, ...props }) => (
+                                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap" {...props} />
+                                ),
+                            }}
+                        >
+                            {response}
+                        </ReactMarkdown>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
