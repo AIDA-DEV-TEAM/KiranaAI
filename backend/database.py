@@ -35,3 +35,10 @@ class Sale(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+
+def get_db_connection():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
