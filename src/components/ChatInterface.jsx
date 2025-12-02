@@ -205,51 +205,6 @@ const ChatInterface = ({ messages, setMessages }) => {
         }
         if (audioContextRef.current) {
             audioContextRef.current.close();
-            audioContextRef.current = null;
-        }
-    };
-
-    const nextStartTimeRef = useRef(0);
-    const MIN_BUFFER_SIZE = 3; // Wait for 3 chunks before starting playback
-
-    const processAudioQueue = async () => {
-        if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
-
-        // If we have enough chunks or if we are already in a playback sequence (checked by nextStartTimeRef)
-        // But to start fresh, we want a buffer.
-        // Let's simplify: Just play if we have chunks, but ensure nextStartTime is managed.
-        // Actually, to fix "breaking", we should wait for a few chunks if the queue was empty.
-
-        isPlayingRef.current = true;
-
-        while (audioQueueRef.current.length > 0) {
-            const { audioBuffer, audioCtx } = audioQueueRef.current.shift();
-
-            const source = audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioCtx.destination);
-
-            // Schedule playback
-            // Ensure we don't schedule in the past
-            // Add a small buffer if we are starting fresh (gap detected)
-            const currentTime = audioCtx.currentTime;
-            if (nextStartTimeRef.current < currentTime) {
-                nextStartTimeRef.current = currentTime + 0.2; // 200ms buffer for fresh start
-            }
-
-            const startTime = nextStartTimeRef.current;
-            source.start(startTime);
-
-            // Update next start time
-            nextStartTimeRef.current = startTime + audioBuffer.duration;
-        }
-
-        isPlayingRef.current = false;
-    };
-
-    const playAudioChunk = async (base64Data) => {
-        try {
-            // Initialize AudioContext if not present or closed
             if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
                 audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
                 nextStartTimeRef.current = audioContextRef.current.currentTime;
