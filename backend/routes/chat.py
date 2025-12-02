@@ -145,7 +145,10 @@ async def chat(request: models.ChatRequest, db: Session = Depends(get_db)):
         return {"response": text_response}
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback.print_exc()
+        print(f"Error in chat endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
