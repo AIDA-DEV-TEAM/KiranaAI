@@ -210,13 +210,18 @@ const ChatInterface = ({ messages, setMessages }) => {
         }
     };
 
-    const MIN_BUFFER_SIZE = 5; // Increased buffer size for stability
+    const MIN_BUFFER_SIZE = 10; // Increased buffer size for stability
 
     const processAudioQueue = async () => {
         if (isPlayingRef.current) return;
 
         const audioCtx = audioContextRef.current;
         if (!audioCtx) return;
+
+        // Ensure context is running
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
 
         // Check if we are currently playing audio (tail is in the future)
         const currentTime = audioCtx.currentTime;
@@ -241,7 +246,7 @@ const ChatInterface = ({ messages, setMessages }) => {
             const now = ctx.currentTime;
             // If we fell behind, reset nextStartTime to now + small buffer
             if (nextStartTimeRef.current < now) {
-                nextStartTimeRef.current = now + 0.1;
+                nextStartTimeRef.current = now + 0.5; // 500ms buffer for smoother catch-up
             }
 
             const startTime = nextStartTimeRef.current;
@@ -324,7 +329,8 @@ const ChatInterface = ({ messages, setMessages }) => {
                             msg.role === 'user'
                                 ? "bg-blue-600 text-white rounded-tr-none"
                                 : "bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700"
-                        )}>
+                        )}
+                        >
                             <div className="prose prose-sm prose-invert max-w-none">
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
