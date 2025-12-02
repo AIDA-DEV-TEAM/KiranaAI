@@ -22,7 +22,7 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info("WebSocket connection accepted")
 
     config = {
-        "response_modalities": ["AUDIO", "TEXT"]
+        "response_modalities": ["AUDIO"]
     }
 
     try:
