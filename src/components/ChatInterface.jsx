@@ -210,6 +210,44 @@ const ChatInterface = ({ messages, setMessages }) => {
     };
 
     const nextStartTimeRef = useRef(0);
+    const audioQueueRef = useRef([]);
+    const isPlayingRef = useRef(false);
+    const MIN_BUFFER_SIZE = 3; // Wait for 3 chunks before starting playback
+
+    const processAudioQueue = async () => {
+        if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
+
+        // If we have enough chunks or if we are already in a playback sequence (checked by nextStartTimeRef)
+        // But to start fresh, we want a buffer.
+        // Let's simplify: Just play if we have chunks, but ensure nextStartTime is managed.
+        // Actually, to fix "breaking", we should wait for a few chunks if the queue was empty.
+
+        isPlayingRef.current = true;
+
+        while (audioQueueRef.current.length > 0) {
+            const { audioBuffer, audioCtx } = audioQueueRef.current.shift();
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioCtx.destination);
+
+            // Schedule playback
+            // Ensure we don't schedule in the past
+            // Add a small buffer if we are starting fresh (gap detected)
+            const currentTime = audioCtx.currentTime;
+            if (nextStartTimeRef.current < currentTime) {
+                nextStartTimeRef.current = currentTime + 0.2; // 200ms buffer for fresh start
+            }
+
+            const startTime = nextStartTimeRef.current;
+            source.start(startTime);
+
+            // Update next start time
+            nextStartTimeRef.current = startTime + audioBuffer.duration;
+        }
+
+        isPlayingRef.current = false;
+    };
 
     const playAudioChunk = async (base64Data) => {
         try {
@@ -241,17 +279,17 @@ const ChatInterface = ({ messages, setMessages }) => {
             const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 24000);
             audioBuffer.getChannelData(0).set(float32Array);
 
-            const source = audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioCtx.destination);
+            // Add to queue
+            audioQueueRef.current.push({ audioBuffer, audioCtx });
 
-            // Schedule playback
-            // Ensure we don't schedule in the past
-            const startTime = Math.max(audioCtx.currentTime, nextStartTimeRef.current);
-            source.start(startTime);
+            // Trigger processing if not already playing and we have enough buffer
+            // Or if we are already "streaming" (nextStartTime is in future), we can just push and let the loop handle it?
+            // The loop above is synchronous-ish (while loop), so it drains the queue immediately.
+            // We need a better approach for "streaming".
+            // Actually, the Web Audio API handles scheduling. We can just schedule everything in the queue immediately.
+            // The "breaking" happens when nextStartTime < currentTime.
 
-            // Update next start time
-            nextStartTimeRef.current = startTime + audioBuffer.duration;
+            processAudioQueue();
 
         } catch (e) {
             console.error("Error playing audio:", e);
