@@ -6,6 +6,7 @@ import 'highlight.js/styles/github-dark.css'; // Import highlight.js styles
 import { Send, Bot, User, Loader2, Mic, MicOff, Volume2 } from 'lucide-react';
 import { chatWithData, transcribeAudio } from '../services/api';
 import { cn } from '../lib/utils';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 
 const ChatInterface = ({ messages, setMessages }) => {
     // Local state removed, using props now
@@ -66,6 +67,13 @@ const ChatInterface = ({ messages, setMessages }) => {
 
     const startRecording = async () => {
         try {
+            // Request permissions first (using the plugin helper)
+            try {
+                await SpeechRecognition.requestPermissions();
+            } catch (permError) {
+                console.warn("Permission request via plugin failed/skipped:", permError);
+            }
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorderRef.current = new MediaRecorder(stream);
             audioChunksRef.current = [];
@@ -83,15 +91,6 @@ const ChatInterface = ({ messages, setMessages }) => {
                     const data = await transcribeAudio(audioBlob);
                     if (data.text) {
                         setInput(data.text);
-                        // Automatically send after transcription
-                        // We need to use the text directly because setInput is async
-                        // But handleSend uses 'input' state. So we'll call a modified version or just set state and let user send?
-                        // Plan said: "Verify the text appears in the input box and is sent automatically."
-                        // So let's send it.
-
-                        // We can't easily call handleSend because it relies on 'input' state which hasn't updated yet in this closure.
-                        // So we duplicate the send logic slightly or refactor.
-                        // Let's refactor handleSend to accept text optionally.
                         handleSendWithText(data.text);
                     }
                 } catch (error) {
@@ -109,7 +108,7 @@ const ChatInterface = ({ messages, setMessages }) => {
             setIsRecording(true);
         } catch (error) {
             console.error("Error accessing microphone:", error);
-            alert("Could not access microphone.");
+            alert(`Could not access microphone. Error: ${error.name} - ${error.message}. Please ensure you have granted microphone permission.`);
         }
     };
 

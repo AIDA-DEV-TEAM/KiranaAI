@@ -15,6 +15,19 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        // Ensure the WebView grants permissions for audio/video
+        WebView webView = getBridge().getWebView();
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                request.grant(request.getResources());
+            }
+        });
+    }
+
+    @Override
     protected void onNewIntent(android.content.Intent intent) {
         super.onNewIntent(intent);
         handleIntent(intent);
