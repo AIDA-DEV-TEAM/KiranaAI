@@ -165,47 +165,29 @@ async def transcribe_audio(file: UploadFile = File(...)):
         if not suffix:
             suffix = ".webm"
             
-        # Save to temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            content = await file.read()
-            tmp.write(content)
-            temp_path = tmp.name
+        # Read file content
+        content = await file.read()
+        
+        # Determine mime type
+        mime_type = "audio/webm"
+        if file.content_type:
+            mime_type = file.content_type
             
-        file_size = os.path.getsize(temp_path)
-        print(f"Saved temp audio file to: {temp_path} (Size: {file_size} bytes)")
-        
-        if file_size == 0:
-            raise HTTPException(status_code=400, detail="Uploaded audio file is empty")
+        print(f"Processing inline audio (Size: {len(content)} bytes, Type: {mime_type})")
 
-        # Upload the file to Gemini
-        myfile = genai.upload_file(temp_path)
-        print(f"Uploaded file to Gemini: {myfile.name}")
+        # Generate content using inline audio data
+        response = model.generate_content([
+            {
+                "mime_type": mime_type,
+                "data": content
+            },
+            "Transcribe this audio to text exactly as spoken. If it is in an Indian language, transcribe it in the original script (or transliterated if that's standard for the language, but preference for mixed/hinglish if that's what was spoken). Return ONLY the text."
+        ])
         
-        # Wait for file to be active
-        import time
-        while myfile.state.name == "PROCESSING":
-            print("Processing audio file...")
-            time.sleep(1)
-            myfile = genai.get_file(myfile.name)
-            
-        if myfile.state.name != "ACTIVE":
-            raise Exception(f"File upload failed with state: {myfile.state.name}")
-
-        print(f"File is active. Generating content...")
-        
-        # Generate content using the audio file
-        result = model.generate_content([myfile, "Transcribe this audio to text exactly as spoken. If it is in an Indian language, transcribe it in the original script (or transliterated if that's standard for the language, but preference for mixed/hinglish if that's what was spoken). Return ONLY the text."])
-        
-        # Cleanup
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-
-        return {"text": result.text.strip()}
+        return {"text": response.text.strip()}
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         print(f"Error in transcribe endpoint: {str(e)}")
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
