@@ -1,20 +1,34 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from google import genai
-import os
-import asyncio
-import json
-import logging
-import base64
+def get_shop_context():
+    """Fetches a summary of inventory and recent sales for context."""
+    try:
+        # Create a new session for this request
+        db = next(get_db_connection())
+        
+        # Inventory Summary
+        products = db.query(Product).all()
+        inventory_text = "Current Inventory:\n"
+        if not products:
+            inventory_text += "No items in stock.\n"
+        else:
+            for p in products:
+                inventory_text += f"- {p.name}: {p.stock} units (Price: ₹{p.price})\n"
+        
+        # Sales Summary (Today)
+        today = datetime.now().date()
+        sales = db.query(Sale).filter(func.date(Sale.timestamp) == today).all()
+        sales_text = "Sales Today:\n"
+        if not sales:
+            sales_text += "No sales yet today.\n"
+        else:
+            total_revenue = sum(s.total_amount for s in sales)
+            sales_text += f"Total Revenue: ₹{total_revenue}\n"
+            # Group by product for brevity if needed, but listing recent is okay for now
+            sales_text += f"Total Transactions: {len(sales)}\n"
 
-router = APIRouter()
-logger = logging.getLogger("live_chat")
-
-# Initialize Gemini Client
-# Ensure GEMINI_API_KEY is set in environment variables
-api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key, http_options={"api_version": "v1alpha"})
-
-MODEL = "gemini-2.5-flash-native-audio-preview-09-2025"
+        return f"{inventory_text}\n{sales_text}"
+    except Exception as e:
+        logger.error(f"Error fetching shop context: {e}")
+        return "Error fetching shop data."
 
 @router.websocket("/ws/chat")
 async def websocket_endpoint(websocket: WebSocket):
@@ -22,20 +36,26 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info("WebSocket connection accepted")
 
     config = {
-        "response_modalities": ["AUDIO"]
+        "response_modalities": ["AUDIO", "TEXT"]
     }
 
     try:
         async with client.aio.live.connect(model=MODEL, config=config) as session:
             logger.info("Connected to Gemini Live API")
             
+            # Fetch real-time context
+            shop_context = get_shop_context()
+            
             # Send system instruction as the first message
-            # Note: Sending as 'user' role since 'system' role might not be fully supported in live session turns yet
             sys_instruction = (
-                "System Instruction: You are a helpful shop assistant for KiranaAI. Answer concisely. "
-                "You MUST reply in the SAME language as the user's input. "
+                "System Instruction: You are a helpful shop assistant for KiranaAI. "
+                "You have access to the following real-time shop data:\n\n"
+                f"{shop_context}\n\n"
+                "Use this data to answer user queries accurately. "
+                "Answer concisely. You MUST reply in the SAME language as the user's input. "
                 "If the user speaks Hindi, reply in Hindi. If Telugu, reply in Telugu. "
-                "Do not output internal thoughts or headers. Just provide the response."
+                "Do not output internal thoughts, reasoning steps, or headers like 'Addressing the request'. "
+                "Just provide the final spoken response directly."
             )
             await session.send(input=sys_instruction, end_of_turn=True)
 
