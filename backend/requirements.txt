@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+google-generativeai
+python-dotenv
+pydantic
+requests
+python-multipart
+Pillow
+websockets
+google-genai
