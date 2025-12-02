@@ -70,6 +70,17 @@ const ChatInterface = ({ messages, setMessages }) => {
     const startLiveSession = async () => {
         try {
             setIsLoading(true);
+
+            // Request microphone permission explicitly
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (err) {
+                console.error("Microphone permission denied:", err);
+                alert("Please grant microphone permission to use voice features.");
+                setIsLoading(false);
+                return;
+            }
+
             // Fetch token from backend
             const response = await api.get('/api/live-chat/token');
             const data = response.data;
