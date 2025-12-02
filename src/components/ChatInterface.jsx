@@ -106,7 +106,20 @@ const ChatInterface = ({ messages, setMessages }) => {
                     if (data.serverContent && data.serverContent.modelTurn && data.serverContent.modelTurn.parts) {
                         for (const part of data.serverContent.modelTurn.parts) {
                             if (part.text) {
-                                setMessages(prev => [...prev, { role: 'assistant', content: part.text }]);
+                                setMessages(prev => {
+                                    const lastMsg = prev[prev.length - 1];
+                                    // If the last message is from the assistant, append to it
+                                    if (lastMsg && lastMsg.role === 'assistant') {
+                                        const updatedMessages = [...prev];
+                                        updatedMessages[prev.length - 1] = {
+                                            ...lastMsg,
+                                            content: lastMsg.content + part.text
+                                        };
+                                        return updatedMessages;
+                                    }
+                                    // Otherwise, start a new assistant message
+                                    return [...prev, { role: 'assistant', content: part.text }];
+                                });
                             }
                             if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
                                 // Play audio
@@ -247,9 +260,17 @@ const ChatInterface = ({ messages, setMessages }) => {
 
             // Schedule playback
             const now = ctx.currentTime;
-            // If we fell behind, reset nextStartTime to now + very small buffer
+
+            // CHANGE: Allow a small "drift" before resetting.
+            // Only reset if we are significantly behind (more than 20ms)
             if (nextStartTimeRef.current < now) {
-                nextStartTimeRef.current = now + 0.05; // 50ms buffer for smooth catch-up
+                // We are late. If the gap is small (<0.2s), play immediately (catch up)
+                // If the gap is huge (lag spike), reset to future to avoid playing at 10x speed
+                if (now - nextStartTimeRef.current > 0.2) {
+                    nextStartTimeRef.current = now + 0.05; // Hard reset (you will hear a gap)
+                } else {
+                    nextStartTimeRef.current = now; // Soft reset (play immediately)
+                }
             }
 
             const startTime = nextStartTimeRef.current;
