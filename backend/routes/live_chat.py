@@ -22,8 +22,8 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info("WebSocket connection accepted")
 
     config = {
-        "response_modalities": ["AUDIO"],
-        "system_instruction": "You are a helpful shop assistant for KiranaAI. Answer concisely. Always reply in the same language as the user's input. Do not output internal thoughts, reasoning steps, or headers like 'Acknowledge' or 'Formulating'. Just provide the final spoken response directly."
+        "response_modalities": ["AUDIO", "TEXT"],
+        "system_instruction": "You are a helpful shop assistant for KiranaAI. Answer concisely. You MUST reply in the SAME language as the user's input. If the user speaks Hindi, reply in Hindi. If Telugu, reply in Telugu. Do not output internal thoughts or headers. Just provide the response."
     }
 
     try:
@@ -80,7 +80,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                     }
                                 }
                                 await websocket.send_text(json.dumps(msg))
-                                continue
+                                # Do not continue here, as the response might also contain text in server_content
 
                             # Handle text/other content if no audio data
                             server_content = {
