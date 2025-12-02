@@ -6,8 +6,7 @@ import json
 import logging
 import base64
 from datetime import datetime
-from ..database import get_db_connection
-from ..models import Product, Sale
+from ..database import get_db_connection, Product, Sale
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
