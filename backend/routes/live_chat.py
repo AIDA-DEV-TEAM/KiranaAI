@@ -22,13 +22,22 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info("WebSocket connection accepted")
 
     config = {
-        "response_modalities": ["AUDIO", "TEXT"],
-        "system_instruction": "You are a helpful shop assistant for KiranaAI. Answer concisely. You MUST reply in the SAME language as the user's input. If the user speaks Hindi, reply in Hindi. If Telugu, reply in Telugu. Do not output internal thoughts or headers. Just provide the response."
+        "response_modalities": ["AUDIO", "TEXT"]
     }
 
     try:
         async with client.aio.live.connect(model=MODEL, config=config) as session:
             logger.info("Connected to Gemini Live API")
+            
+            # Send system instruction as the first message
+            # Note: Sending as 'user' role since 'system' role might not be fully supported in live session turns yet
+            sys_instruction = (
+                "System Instruction: You are a helpful shop assistant for KiranaAI. Answer concisely. "
+                "You MUST reply in the SAME language as the user's input. "
+                "If the user speaks Hindi, reply in Hindi. If Telugu, reply in Telugu. "
+                "Do not output internal thoughts or headers. Just provide the response."
+            )
+            await session.send(input=sys_instruction, end_of_turn=True)
 
             async def receive_from_frontend():
                 try:
