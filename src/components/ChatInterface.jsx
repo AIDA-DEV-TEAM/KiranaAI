@@ -188,7 +188,7 @@ const ChatInterface = ({ messages, setMessages }) => {
             };
 
             sourceRef.current.connect(processorRef.current);
-            processorRef.current.connect(audioContextRef.current.destination);
+            // processorRef.current.connect(audioContextRef.current.destination); // REMOVED LOOPBACK
 
         } catch (error) {
             console.error("Error capturing audio:", error);
@@ -210,7 +210,7 @@ const ChatInterface = ({ messages, setMessages }) => {
         }
     };
 
-    const MIN_BUFFER_SIZE = 3; // Reduced for lower latency
+    const MIN_BUFFER_DURATION = 0.5; // Seconds of audio to buffer before starting playback
 
     const processAudioQueue = async () => {
         if (isPlayingRef.current) return;
@@ -227,8 +227,11 @@ const ChatInterface = ({ messages, setMessages }) => {
         const currentTime = audioCtx.currentTime;
         const isAudioPlaying = nextStartTimeRef.current > currentTime;
 
+        // Calculate total duration in queue
+        const totalDurationInQueue = audioQueueRef.current.reduce((acc, item) => acc + item.audioBuffer.duration, 0);
+
         // If not playing (gap/start), wait for buffer to fill
-        if (!isAudioPlaying && audioQueueRef.current.length < MIN_BUFFER_SIZE) {
+        if (!isAudioPlaying && totalDurationInQueue < MIN_BUFFER_DURATION) {
             return;
         }
 
@@ -245,9 +248,8 @@ const ChatInterface = ({ messages, setMessages }) => {
             // Schedule playback
             const now = ctx.currentTime;
             // If we fell behind, reset nextStartTime to now + very small buffer
-            // The previous 0.5s was causing "breaking" (stuttering)
             if (nextStartTimeRef.current < now) {
-                nextStartTimeRef.current = now + 0.02; // 20ms buffer for smooth catch-up
+                nextStartTimeRef.current = now + 0.05; // 50ms buffer for smooth catch-up
             }
 
             const startTime = nextStartTimeRef.current;
@@ -307,54 +309,56 @@ const ChatInterface = ({ messages, setMessages }) => {
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-8rem)] bg-slate-900 rounded-xl shadow-sm border border-slate-700 overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-8rem)] bg-slate-900 rounded-xl shadow-sm border border-slate-700 overflow-hidden" >
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((msg, index) => (
-                    <div
-                        key={index}
-                        className={cn(
-                            "flex gap-3 max-w-[85%]",
-                            msg.role === 'user' ? "ml-auto flex-row-reverse" : ""
-                        )}
-                    >
-                        <div className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md",
-                            msg.role === 'user' ? "bg-blue-600 text-white" : "bg-slate-700 text-blue-300"
-                        )}>
-                            {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-                        </div>
-
-                        <div className={cn(
-                            "p-3 rounded-2xl text-sm shadow-md",
-                            msg.role === 'user'
-                                ? "bg-blue-600 text-white rounded-tr-none"
-                                : "bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700"
-                        )}
+            < div className="flex-1 overflow-y-auto p-4 space-y-4" >
+                {
+                    messages.map((msg, index) => (
+                        <div
+                            key={index}
+                            className={cn(
+                                "flex gap-3 max-w-[85%]",
+                                msg.role === 'user' ? "ml-auto flex-row-reverse" : ""
+                            )}
                         >
-                            <div className="prose prose-sm prose-invert max-w-none">
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeHighlight]}
-                                    components={{
-                                        table: ({ node, ...props }) => (
-                                            <div className="overflow-x-auto my-2 rounded border border-slate-600 bg-slate-900/50">
-                                                <table className="min-w-full divide-y divide-slate-700" {...props} />
-                                            </div>
-                                        ),
-                                        thead: ({ node, ...props }) => <thead className="bg-slate-800" {...props} />,
-                                        th: ({ node, ...props }) => <th className="px-3 py-2 text-left text-xs font-medium text-slate-300 uppercase" {...props} />,
-                                        tbody: ({ node, ...props }) => <tbody className="divide-y divide-slate-700" {...props} />,
-                                        tr: ({ node, ...props }) => <tr className="hover:bg-slate-800/50" {...props} />,
-                                        td: ({ node, ...props }) => <td className="px-3 py-2 text-sm text-slate-300" {...props} />,
-                                    }}
-                                >
-                                    {msg.content}
-                                </ReactMarkdown>
+                            <div className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md",
+                                msg.role === 'user' ? "bg-blue-600 text-white" : "bg-slate-700 text-blue-300"
+                            )}>
+                                {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                            </div>
+
+                            <div className={cn(
+                                "p-3 rounded-2xl text-sm shadow-md",
+                                msg.role === 'user'
+                                    ? "bg-blue-600 text-white rounded-tr-none"
+                                    : "bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700"
+                            )}
+                            >
+                                <div className="prose prose-sm prose-invert max-w-none">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeHighlight]}
+                                        components={{
+                                            table: ({ node, ...props }) => (
+                                                <div className="overflow-x-auto my-2 rounded border border-slate-600 bg-slate-900/50">
+                                                    <table className="min-w-full divide-y divide-slate-700" {...props} />
+                                                </div>
+                                            ),
+                                            thead: ({ node, ...props }) => <thead className="bg-slate-800" {...props} />,
+                                            th: ({ node, ...props }) => <th className="px-3 py-2 text-left text-xs font-medium text-slate-300 uppercase" {...props} />,
+                                            tbody: ({ node, ...props }) => <tbody className="divide-y divide-slate-700" {...props} />,
+                                            tr: ({ node, ...props }) => <tr className="hover:bg-slate-800/50" {...props} />,
+                                            td: ({ node, ...props }) => <td className="px-3 py-2 text-sm text-slate-300" {...props} />,
+                                        }}
+                                    >
+                                        {msg.content}
+                                    </ReactMarkdown>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                }
                 {isLoading && (
                     <div className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-slate-700 text-blue-300 flex items-center justify-center shrink-0">
@@ -364,12 +368,13 @@ const ChatInterface = ({ messages, setMessages }) => {
                             <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
                         </div>
                     </div>
-                )}
+                )
+                }
                 <div ref={messagesEndRef} />
-            </div>
+            </div >
 
             {/* Input Area */}
-            <div className="p-4 border-t border-slate-700 bg-slate-800">
+            < div className="p-4 border-t border-slate-700 bg-slate-800" >
                 <form onSubmit={handleSend} className="flex gap-2 items-center">
                     <button
                         type="button"
@@ -401,8 +406,8 @@ const ChatInterface = ({ messages, setMessages }) => {
                         <Send size={20} />
                     </button>
                 </form>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 
