@@ -22,7 +22,8 @@ async def websocket_endpoint(websocket: WebSocket):
     logger.info("WebSocket connection accepted")
 
     config = {
-        "response_modalities": ["AUDIO"]
+        "response_modalities": ["AUDIO"],
+        "system_instruction": "You are a helpful shop assistant for KiranaAI. Answer concisely. Always reply in the same language as the user's input. Do not output internal thoughts, reasoning steps, or headers like 'Acknowledge' or 'Formulating'. Just provide the final spoken response directly."
     }
 
     try:

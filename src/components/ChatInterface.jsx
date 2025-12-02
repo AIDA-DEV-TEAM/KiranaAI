@@ -209,8 +209,18 @@ const ChatInterface = ({ messages, setMessages }) => {
         }
     };
 
+    const nextStartTimeRef = useRef(0);
+
     const playAudioChunk = async (base64Data) => {
         try {
+            // Initialize AudioContext if not present or closed
+            if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                nextStartTimeRef.current = audioContextRef.current.currentTime;
+            }
+
+            const audioCtx = audioContextRef.current;
+
             // Decode base64
             const binaryString = atob(base64Data);
             const len = binaryString.length;
@@ -221,7 +231,6 @@ const ChatInterface = ({ messages, setMessages }) => {
 
             // Convert PCM to AudioBuffer
             // Gemini sends PCM 24kHz (usually)
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
             const int16Array = new Int16Array(bytes.buffer);
             const float32Array = new Float32Array(int16Array.length);
 
@@ -235,7 +244,14 @@ const ChatInterface = ({ messages, setMessages }) => {
             const source = audioCtx.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(audioCtx.destination);
-            source.start();
+
+            // Schedule playback
+            // Ensure we don't schedule in the past
+            const startTime = Math.max(audioCtx.currentTime, nextStartTimeRef.current);
+            source.start(startTime);
+
+            // Update next start time
+            nextStartTimeRef.current = startTime + audioBuffer.duration;
 
         } catch (e) {
             console.error("Error playing audio:", e);
