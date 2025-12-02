@@ -210,8 +210,6 @@ const ChatInterface = ({ messages, setMessages }) => {
     };
 
     const nextStartTimeRef = useRef(0);
-    const audioQueueRef = useRef([]);
-    const isPlayingRef = useRef(false);
     const MIN_BUFFER_SIZE = 3; // Wait for 3 chunks before starting playback
 
     const processAudioQueue = async () => {
