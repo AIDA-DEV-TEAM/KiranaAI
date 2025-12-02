@@ -155,27 +155,41 @@ async def transcribe_audio(file: UploadFile = File(...)):
     if not api_key:
         raise HTTPException(status_code=500, detail="Gemini API key not configured")
 
+    temp_path = None
     try:
-        # Save the uploaded file temporarily
-        temp_filename = f"temp_{file.filename}"
-        with open(temp_filename, "wb") as buffer:
-            buffer.write(await file.read())
+        import tempfile
+        import shutil
+        
+        # Determine suffix
+        suffix = os.path.splitext(file.filename)[1] if file.filename else ".webm"
+        if not suffix:
+            suffix = ".webm"
+            
+        # Save to temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            temp_path = tmp.name
+            
+        print(f"Saved temp audio file to: {temp_path}")
 
         # Upload the file to Gemini
-        myfile = genai.upload_file(temp_filename)
+        myfile = genai.upload_file(temp_path)
+        print(f"Uploaded file to Gemini: {myfile.name}")
         
         # Generate content using the audio file
-        # We use a simple prompt to ask for transcription
         result = model.generate_content([myfile, "Transcribe this audio to text exactly as spoken. If it is in an Indian language, transcribe it in the original script (or transliterated if that's standard for the language, but preference for mixed/hinglish if that's what was spoken). Return ONLY the text."])
         
         # Cleanup
-        os.remove(temp_filename)
-        # We might want to delete the file from Gemini too, but for now we leave it or let it expire
-        # genai.delete_file(myfile.name) 
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
         return {"text": result.text.strip()}
 
     except Exception as e:
-        if os.path.exists(temp_filename):
-            os.remove(temp_filename)
+        import traceback
+        traceback.print_exc()
+        print(f"Error in transcribe endpoint: {str(e)}")
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
