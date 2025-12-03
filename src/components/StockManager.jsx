@@ -50,6 +50,7 @@ const StockManager = () => {
             console.error("Camera Error:", error);
             // Don't show error if user cancelled
             if (error.message !== 'User cancelled photos app') {
+                alert(`Camera Error: ${error.message}`);
                 setError("Failed to open camera.");
             }
         }
@@ -116,7 +117,7 @@ const StockManager = () => {
                         </div>
                         <input
                             type="file"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             accept="image/*"
                             onChange={(e) => handleFileUpload(e, 'ocr')}
                             onClick={(e) => (e.target.value = null)}
@@ -174,7 +175,7 @@ const StockManager = () => {
                         </div>
                         <input
                             type="file"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             accept="image/*"
                             onChange={(e) => handleFileUpload(e, 'shelf')}
                             onClick={(e) => (e.target.value = null)}
