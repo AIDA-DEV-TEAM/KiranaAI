@@ -16,7 +16,8 @@ const ChatInterface = ({ messages, setMessages }) => {
 
     const messagesEndRef = useRef(null);
     const websocketRef = useRef(null);
-    const audioContextRef = useRef(null);
+    const audioCaptureContextRef = useRef(null); // For mic capture (16kHz)
+    const audioPlaybackContextRef = useRef(null); // For playback (24kHz)
     const processorRef = useRef(null);
     const sourceRef = useRef(null);
     const audioQueueRef = useRef([]);
@@ -109,20 +110,33 @@ const ChatInterface = ({ messages, setMessages }) => {
                         for (const part of data.serverContent.modelTurn.parts) {
                             if (part.text) {
                                 console.log("Received text:", part.text);
-                                setMessages(prev => {
-                                    const lastMsg = prev[prev.length - 1];
-                                    // If the last message is from the assistant, append to it
-                                    if (lastMsg && lastMsg.role === 'assistant') {
-                                        const updatedMessages = [...prev];
-                                        updatedMessages[prev.length - 1] = {
-                                            ...lastMsg,
-                                            content: lastMsg.content + part.text
-                                        };
-                                        return updatedMessages;
-                                    }
-                                    // Otherwise, start a new assistant message
-                                    return [...prev, { role: 'assistant', content: part.text }];
-                                });
+
+                                // Filter out internal thoughts/status messages
+                                const lowerText = part.text.toLowerCase();
+                                const isInternalThought =
+                                    lowerText.includes('reviewing') ||
+                                    lowerText.includes('analyzing') ||
+                                    lowerText.includes('user\'s query') ||
+                                    part.text.startsWith('**');
+
+                                if (!isInternalThought) {
+                                    setMessages(prev => {
+                                        const lastMsg = prev[prev.length - 1];
+                                        // If the last message is from the assistant, append to it
+                                        if (lastMsg && lastMsg.role === 'assistant') {
+                                            const updatedMessages = [...prev];
+                                            updatedMessages[prev.length - 1] = {
+                                                ...lastMsg,
+                                                content: lastMsg.content + part.text
+                                            };
+                                            return updatedMessages;
+                                        }
+                                        // Otherwise, start a new assistant message
+                                        return [...prev, { role: 'assistant', content: part.text }];
+                                    });
+                                } else {
+                                    console.log("Filtered out internal thought:", part.text.substring(0, 50));
+                                }
                             }
                             if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
                                 console.log("Received audio chunk, size:", part.inlineData.data.length);
@@ -167,11 +181,11 @@ const ChatInterface = ({ messages, setMessages }) => {
     const startAudioCapture = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-            sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
+            audioCaptureContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            sourceRef.current = audioCaptureContextRef.current.createMediaStreamSource(stream);
 
             // Use ScriptProcessor for capturing raw PCM
-            processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+            processorRef.current = audioCaptureContextRef.current.createScriptProcessor(4096, 1, 1);
 
             let frameCount = 0;
             processorRef.current.onaudioprocess = (e) => {
@@ -228,9 +242,9 @@ const ChatInterface = ({ messages, setMessages }) => {
             sourceRef.current.disconnect();
             sourceRef.current = null;
         }
-        if (audioContextRef.current) {
-            audioContextRef.current.close();
-            audioContextRef.current = null;
+        if (audioCaptureContextRef.current) {
+            audioCaptureContextRef.current.close();
+            audioCaptureContextRef.current = null;
         }
     };
 
@@ -239,7 +253,7 @@ const ChatInterface = ({ messages, setMessages }) => {
     const processAudioQueue = async () => {
         if (isPlayingRef.current) return;
 
-        const audioCtx = audioContextRef.current;
+        const audioCtx = audioPlaybackContextRef.current;
         if (!audioCtx) return;
 
         // Ensure context is running
@@ -298,13 +312,13 @@ const ChatInterface = ({ messages, setMessages }) => {
         try {
             console.log("playAudioChunk called, data length:", base64Data.length);
             // Initialize AudioContext if not present or closed
-            if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-                nextStartTimeRef.current = audioContextRef.current.currentTime;
-                console.log("Created new AudioContext");
+            if (!audioPlaybackContextRef.current || audioPlaybackContextRef.current.state === 'closed') {
+                audioPlaybackContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                nextStartTimeRef.current = audioPlaybackContextRef.current.currentTime;
+                console.log("Created new playback AudioContext");
             }
 
-            const audioCtx = audioContextRef.current;
+            const audioCtx = audioPlaybackContextRef.current;
             // Decode base64
             const binaryString = atob(base64Data);
             const len = binaryString.length;
