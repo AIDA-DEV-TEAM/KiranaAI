@@ -10,13 +10,13 @@ const StockManager = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const handleCameraCapture = async (type) => {
+    const handleCameraCapture = async (type, source = CameraSource.Camera) => {
         try {
             const image = await Camera.getPhoto({
                 quality: 90,
                 allowEditing: false,
                 resultType: CameraResultType.Uri,
-                source: CameraSource.Camera
+                source: source
             });
 
             if (image.webPath) {
@@ -56,31 +56,6 @@ const StockManager = () => {
         }
     };
 
-    const handleFileUpload = async (event, type) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        setLoading(true);
-        setError(null);
-        try {
-            const result = await uploadVisionImage(file, type);
-            const parsedData = JSON.parse(result.data);
-
-            if (type === 'ocr') {
-                setOcrResult(parsedData);
-                setShelfResult(null);
-            } else {
-                setShelfResult(parsedData);
-                setOcrResult(null);
-            }
-        } catch (err) {
-            console.error("Vision API Error:", err);
-            setError("Failed to process image. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
         <div className="p-4 space-y-6 pb-safe-nav">
             <div className="flex items-center justify-between">
@@ -102,7 +77,7 @@ const StockManager = () => {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex-1">
                         <button
-                            onClick={() => handleCameraCapture('ocr')}
+                            onClick={() => handleCameraCapture('ocr', CameraSource.Camera)}
                             className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-primary/30 rounded-2xl hover:bg-primary/5 bg-primary/5 cursor-pointer w-full transition-all active:scale-95"
                         >
                             <CameraIcon className="w-8 h-8 text-primary mb-2" />
@@ -110,18 +85,14 @@ const StockManager = () => {
                         </button>
                     </div>
 
-                    <div className="flex-1 relative">
-                        <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95">
+                    <div className="flex-1">
+                        <button
+                            onClick={() => handleCameraCapture('ocr', CameraSource.Photos)}
+                            className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95"
+                        >
                             <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                             <p className="text-sm text-muted-foreground">Upload File</p>
-                        </div>
-                        <input
-                            type="file"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            accept="image/*"
-                            onChange={(e) => handleFileUpload(e, 'ocr')}
-                            onClick={(e) => (e.target.value = null)}
-                        />
+                        </button>
                     </div>
                 </div>
 
@@ -160,7 +131,7 @@ const StockManager = () => {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex-1">
                         <button
-                            onClick={() => handleCameraCapture('shelf')}
+                            onClick={() => handleCameraCapture('shelf', CameraSource.Camera)}
                             className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-purple-500/30 rounded-2xl hover:bg-purple-500/5 bg-purple-500/5 cursor-pointer w-full transition-all active:scale-95"
                         >
                             <CameraIcon className="w-8 h-8 text-purple-600 mb-2" />
@@ -168,18 +139,14 @@ const StockManager = () => {
                         </button>
                     </div>
 
-                    <div className="flex-1 relative">
-                        <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95">
+                    <div className="flex-1">
+                        <button
+                            onClick={() => handleCameraCapture('shelf', CameraSource.Photos)}
+                            className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95"
+                        >
                             <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                             <p className="text-sm text-muted-foreground">Upload File</p>
-                        </div>
-                        <input
-                            type="file"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            accept="image/*"
-                            onChange={(e) => handleFileUpload(e, 'shelf')}
-                            onClick={(e) => (e.target.value = null)}
-                        />
+                        </button>
                     </div>
                 </div>
 
