@@ -24,6 +24,14 @@
 }
 
 @layer utilities {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 20px);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
   .dark {
     --color-background: 222.2 84% 4.9%;
     --color-foreground: 210 40% 98%;

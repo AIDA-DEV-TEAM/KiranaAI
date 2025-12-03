@@ -75,7 +75,7 @@ const Layout = ({ children }) => {
             {/* Main Content */}
             <div className="flex-1 overflow-auto flex flex-col bg-gray-50/50">
                 {/* Mobile Header */}
-                <div className="md:hidden p-4 bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-30 flex items-center justify-between shadow-sm">
+                <div className="md:hidden pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 px-4 bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-30 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
