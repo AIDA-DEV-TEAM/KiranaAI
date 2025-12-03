@@ -9,7 +9,7 @@ python-multipart
 Pillow
 websockets
 google-genai
-livekit-agents
+livekit-agents==1.3.5
 livekit-plugins-google
 livekit-plugins-noise-cancellation
-livekit-api
+livekit-api==1.0.7
