@@ -34,11 +34,6 @@ const StockManager = () => {
         }
     };
 
-    const ocrCameraRef = React.useRef(null);
-    const ocrFileRef = React.useRef(null);
-    const shelfCameraRef = React.useRef(null);
-    const shelfFileRef = React.useRef(null);
-
     return (
         <div className="p-4 space-y-6 pb-safe-nav">
             <div className="flex items-center justify-between">
@@ -59,38 +54,32 @@ const StockManager = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex-1">
-                        <input
-                            type="file"
-                            ref={ocrCameraRef}
-                            className="hidden"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={(e) => handleFileUpload(e, 'ocr')}
-                        />
-                        <button
-                            onClick={() => ocrCameraRef.current?.click()}
-                            className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-primary/30 rounded-2xl hover:bg-primary/5 bg-primary/5 cursor-pointer w-full transition-all active:scale-95"
-                        >
+                        <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-primary/30 rounded-2xl hover:bg-primary/5 bg-primary/5 cursor-pointer w-full transition-all active:scale-95">
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) => handleFileUpload(e, 'ocr')}
+                                onClick={(e) => (e.target.value = null)}
+                            />
                             <Camera className="w-8 h-8 text-primary mb-2" />
                             <p className="text-sm text-primary font-medium">Take Photo</p>
-                        </button>
+                        </label>
                     </div>
 
                     <div className="flex-1">
-                        <input
-                            type="file"
-                            ref={ocrFileRef}
-                            className="hidden"
-                            accept="image/*"
-                            onChange={(e) => handleFileUpload(e, 'ocr')}
-                        />
-                        <button
-                            onClick={() => ocrFileRef.current?.click()}
-                            className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95"
-                        >
+                        <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95">
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={(e) => handleFileUpload(e, 'ocr')}
+                                onClick={(e) => (e.target.value = null)}
+                            />
                             <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                             <p className="text-sm text-muted-foreground">Upload File</p>
-                        </button>
+                        </label>
                     </div>
                 </div>
 
@@ -128,38 +117,32 @@ const StockManager = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex-1">
-                        <input
-                            type="file"
-                            ref={shelfCameraRef}
-                            className="hidden"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={(e) => handleFileUpload(e, 'shelf')}
-                        />
-                        <button
-                            onClick={() => shelfCameraRef.current?.click()}
-                            className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-purple-500/30 rounded-2xl hover:bg-purple-500/5 bg-purple-500/5 cursor-pointer w-full transition-all active:scale-95"
-                        >
+                        <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-purple-500/30 rounded-2xl hover:bg-purple-500/5 bg-purple-500/5 cursor-pointer w-full transition-all active:scale-95">
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) => handleFileUpload(e, 'shelf')}
+                                onClick={(e) => (e.target.value = null)}
+                            />
                             <Camera className="w-8 h-8 text-purple-600 mb-2" />
                             <p className="text-sm text-purple-600 font-medium">Take Photo</p>
-                        </button>
+                        </label>
                     </div>
 
                     <div className="flex-1">
-                        <input
-                            type="file"
-                            ref={shelfFileRef}
-                            className="hidden"
-                            accept="image/*"
-                            onChange={(e) => handleFileUpload(e, 'shelf')}
-                        />
-                        <button
-                            onClick={() => shelfFileRef.current?.click()}
-                            className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95"
-                        >
+                        <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95">
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={(e) => handleFileUpload(e, 'shelf')}
+                                onClick={(e) => (e.target.value = null)}
+                            />
                             <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                             <p className="text-sm text-muted-foreground">Upload File</p>
-                        </button>
+                        </label>
                     </div>
                 </div>
 
