@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from gtts import gTTS
 from .. import database, models
+from ..services.chat_service import process_chat_message
 from dotenv import load_dotenv
 
 from pathlib import Path
@@ -25,20 +26,7 @@ def get_db():
     finally:
         db.close()
 
-def get_shop_context(db: Session):
-    # Fetch products and recent sales to build context
-    products = db.execute(text("SELECT name, price, stock, shelf_position FROM products")).fetchall()
-    sales = db.execute(text("SELECT p.name, s.quantity, s.total_amount, s.timestamp FROM sales s JOIN products p ON s.product_id = p.id ORDER BY s.timestamp DESC LIMIT 5")).fetchall()
-    
-    context = "Current Inventory:\n"
-    for p in products:
-        context += f"- {p.name}: Price ₹{p.price}, Stock {p.stock}, Shelf {p.shelf_position}\n"
-    
-    context += "\nRecent Sales:\n"
-    for s in sales:
-        context += f"- Sold {s.quantity} {s.name} for ₹{s.total_amount} at {s.timestamp}\n"
-        
-    return context
+
 
 def detect_language(text):
     for char in text:
@@ -54,37 +42,22 @@ async def live_chat(file: UploadFile = File(...), db: Session = Depends(get_db))
         # Read audio file
         audio_content = await file.read()
         
-        # Get context
-        shop_context = get_shop_context(db)
-        
-        system_instruction = (
-            "System Instruction: You are a helpful shop assistant for KiranaAI. "
-            "You have access to the following real-time shop data:\n\n"
-            f"{shop_context}\n\n"
-            "STRICT RULES:\n"
-            "1. You must ONLY use the provided 'Current Inventory' and 'Recent Sales' data to answer.\n"
-            "2. If a user asks about a product NOT in the 'Current Inventory' list, you MUST say you don't have it or don't know about it. DO NOT guess or make up a price/stock.\n"
-            "3. Answer concisely and naturally.\n"
-            "4. Reply in the SAME language as the user (Hindi/Telugu/English).\n"
-            "5. CRITICAL: Do NOT output internal thoughts, markdown headers, or narration. Just speak the response."
-        )
-        
-        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=system_instruction)
-        
-        # Generate response from audio
-        # Note: We assume the audio is in a format Gemini accepts (mp3, wav, aac, etc.)
-        # Browser MediaRecorder usually outputs webm/ogg. Gemini supports these.
-        response = model.generate_content([
+        # 1. Transcribe Audio
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        transcription_response = model.generate_content([
             {"mime_type": file.content_type or "audio/webm", "data": audio_content},
-            "Listen to the user and respond."
+            "Listen to this audio and transcribe it exactly into text. Do not add any other words."
         ])
+        user_message = transcription_response.text.strip()
+        print(f"User said: {user_message}")
+
+        # 2. Process with Chat Service (SQL Generation)
+        # We don't have history for voice chat yet, passing empty list
+        result = await process_chat_message(user_message, db, history=[])
+        text_response = result["response"]
         
-        text_response = response.text.strip()
-        
-        # Detect language for TTS
+        # 3. Convert Response to Audio
         lang = detect_language(text_response)
-        
-        # Convert text to speech
         tts = gTTS(text=text_response, lang=lang, tld='co.in' if lang == 'en' else 'com') 
         
         mp3_fp = io.BytesIO()
@@ -95,12 +68,12 @@ async def live_chat(file: UploadFile = File(...), db: Session = Depends(get_db))
         return {
             "text_response": text_response,
             "audio_base64": audio_base64,
-            "language": lang
+            "language": lang,
+            "sql_query": result.get("sql_query")
         }
         
     except Exception as e:
         print(f"Error in live chat: {str(e)}")
-        # Return a safe error response that the frontend can handle
         return {
             "text_response": "I'm having trouble hearing you. Please try again.",
             "error": str(e)
