@@ -55,8 +55,8 @@ env.bak/
 venv.bak/
 
 # Android (if not covered by inner gitignore)
-android/app/build
-android/.gradle
+# android/app/build
+# android/.gradle
 
 # OS
 .DS_Store

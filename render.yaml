@@ -7,12 +7,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
-
-  - type: worker
-    name: kirana-voice-agent
-    env: python
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: python backend/agent.py start
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.10.0
