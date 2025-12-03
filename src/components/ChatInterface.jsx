@@ -17,6 +17,7 @@ const ChatInterface = ({ messages, setMessages }) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [volumeLevel, setVolumeLevel] = useState(0); // For visual feedback
+    const [isSpeakingState, setIsSpeakingState] = useState(false); // For UI feedback
 
     const messagesEndRef = useRef(null);
     const mediaRecorderRef = useRef(null);
@@ -124,8 +125,10 @@ const ChatInterface = ({ messages, setMessages }) => {
 
             let silenceStart = Date.now();
             let isSpeaking = false;
-            let silenceThreshold = 10; // Lowered threshold for better sensitivity
-            let silenceDuration = 1500; // 1.5 seconds of silence to stop
+            let silenceThreshold = 50; // Increased threshold to 50
+            let silenceDuration = 1000; // Reduced to 1 second
+            let maxDuration = 10000; // 10 seconds max recording time
+            let recordingStart = Date.now();
 
             const checkSilence = () => {
                 if (!isLiveModeRef.current || mediaRecorder.state !== 'recording') {
@@ -141,14 +144,27 @@ const ChatInterface = ({ messages, setMessages }) => {
 
                 if (average > silenceThreshold) {
                     silenceStart = Date.now();
-                    isSpeaking = true;
+                    if (!isSpeaking) {
+                        isSpeaking = true;
+                        setIsSpeakingState(true);
+                    }
                 } else if (isSpeaking) {
                     if (Date.now() - silenceStart > silenceDuration) {
+                        console.log("Silence detected, stopping recording...");
                         stopRecording();
                         isSpeaking = false;
+                        setIsSpeakingState(false);
                         if (audioContext.state !== 'closed') audioContext.close();
                         return;
                     }
+                }
+
+                // Max duration safety check
+                if (Date.now() - recordingStart > maxDuration) {
+                    console.log("Max duration reached, stopping recording...");
+                    stopRecording();
+                    if (audioContext.state !== 'closed') audioContext.close();
+                    return;
                 }
 
                 requestAnimationFrame(checkSilence);
@@ -164,6 +180,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
                 setIsProcessing(true);
                 setVolumeLevel(0); // Reset volume visual
+                setIsSpeakingState(false);
                 try {
                     const data = await sendVoiceMessage(audioBlob);
 
@@ -208,7 +225,7 @@ const ChatInterface = ({ messages, setMessages }) => {
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
         }
@@ -262,7 +279,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                         {/* Status Text */}
                         <div className="absolute top-1/4 text-center space-y-2 animate-in slide-in-from-bottom-4 duration-700">
                             <h2 className="text-2xl md:text-3xl font-semibold text-white tracking-tight">
-                                {isProcessing ? "Thinking..." : isRecording ? "Listening..." : "Speaking..."}
+                                {isProcessing ? "Thinking..." : isSpeakingState ? "Hearing Voice..." : "Listening..."}
                             </h2>
                         </div>
 
@@ -272,7 +289,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                             <div
                                 className={cn(
                                     "absolute w-32 h-32 rounded-full blur-3xl transition-all duration-100", // Faster transition for volume
-                                    isRecording ? "bg-indigo-500/60" : "bg-blue-500/40",
+                                    isRecording ? (isSpeakingState ? "bg-green-500/60" : "bg-indigo-500/60") : "bg-blue-500/40",
                                     isProcessing && "bg-purple-500/60 animate-pulse"
                                 )}
                                 style={{
@@ -426,24 +443,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                 </form>
             </div>
 
-            <style jsx>{`
-                .pb-safe {
-                    padding-bottom: env(safe-area-inset-bottom, 1rem);
-                }
-                @keyframes wave {
-                    0%, 100% { height: 10px; }
-                    50% { height: 30px; }
-                }
-                .animate-wave {
-                    animation: wave 1s ease-in-out infinite;
-                }
-                .animate-ping-slow {
-                    animation: ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
-                }
-                .animate-spin-slow {
-                    animation: spin 8s linear infinite;
-                }
-            `}</style>
+
         </div>
     );
 };
