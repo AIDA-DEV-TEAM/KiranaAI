@@ -17,8 +17,10 @@ class Product(Base):
     category = Column(String, index=True)
     price = Column(Float)
     stock = Column(Integer)
+    max_stock = Column(Integer, default=50)
     shelf_position = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
+    icon_name = Column(String, nullable=True)
 
     sales = relationship("Sale", back_populates="product")
 

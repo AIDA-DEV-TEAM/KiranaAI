@@ -5,6 +5,8 @@ import ChatInterface from './components/ChatInterface';
 import Dashboard from './components/Dashboard';
 import StorekeeperView from './components/StorekeeperView';
 import StockManager from './components/StockManager';
+import ContactUs from './components/ContactUs';
+import SettingsView from './components/SettingsView';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import { App as CapacitorApp } from '@capacitor/app';
@@ -72,6 +74,8 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/storekeeper" element={<StorekeeperView />} />
             <Route path="/stock" element={<StockManager />} />
+            <Route path="/settings" element={<SettingsView />} />
+            <Route path="/contact" element={<ContactUs />} />
           </Routes>
         </Layout>
       </ErrorBoundary>

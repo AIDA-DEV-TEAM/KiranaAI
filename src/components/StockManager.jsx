@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Camera as CameraIcon, Upload, CheckCircle, AlertCircle, Loader2, ScanLine, FileText } from 'lucide-react';
-import { uploadVisionImage } from '../services/api';
+import { uploadVisionImage, importInventory, updateShelfLocations } from '../services/api';
 import { cn } from '../lib/utils';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
@@ -32,7 +32,11 @@ const StockManager = () => {
                     const result = await uploadVisionImage(file, type);
                     const parsedData = JSON.parse(result.data);
 
-                    if (type === 'ocr') {
+                    if (parsedData.error) {
+                        setError(parsedData.error);
+                        setOcrResult(null);
+                        setShelfResult(null);
+                    } else if (type === 'ocr') {
                         setOcrResult(parsedData);
                         setShelfResult(null);
                     } else {
@@ -53,6 +57,32 @@ const StockManager = () => {
                 alert(`Camera Error: ${error.message}`);
                 setError("Failed to open camera.");
             }
+        }
+    };
+
+    const handleInventoryUpdate = async () => {
+        if (!ocrResult) return;
+        setLoading(true);
+        try {
+            // Map OCR result to ProductCreate format
+            const productsToUpdate = ocrResult.map(item => ({
+                name: item.name,
+                stock: parseInt(item.quantity) || 0,
+                price: 0, // Default, will be ignored if product exists and price is 0
+                category: 'Uncategorized', // Default for new products
+                shelf_position: '',
+                image_url: '',
+                icon_name: 'package'
+            }));
+
+            await importInventory(productsToUpdate);
+            alert("Inventory updated successfully!");
+            setOcrResult(null);
+        } catch (error) {
+            console.error("Failed to update inventory", error);
+            setError("Failed to update inventory. Please try again.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -109,7 +139,11 @@ const StockManager = () => {
                                 </li>
                             ))}
                         </ul>
-                        <button className="w-full bg-green-600 text-white py-3 rounded-xl font-medium shadow-lg shadow-green-600/20 hover:bg-green-700 active:scale-95 transition-all">
+                        <button
+                            onClick={handleInventoryUpdate}
+                            className="w-full bg-green-600 text-white py-3 rounded-xl font-medium shadow-lg shadow-green-600/20 hover:bg-green-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                            {loading ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />}
                             Confirm & Update Inventory
                         </button>
                     </div>
@@ -163,7 +197,24 @@ const StockManager = () => {
                                 </li>
                             ))}
                         </ul>
-                        <button className="w-full bg-purple-600 text-white py-3 rounded-xl font-medium shadow-lg shadow-purple-600/20 hover:bg-purple-700 active:scale-95 transition-all">
+                        <button
+                            onClick={async () => {
+                                if (!shelfResult) return;
+                                setLoading(true);
+                                try {
+                                    await updateShelfLocations(shelfResult);
+                                    alert("Shelf locations updated successfully!");
+                                    setShelfResult(null);
+                                } catch (error) {
+                                    console.error("Failed to update shelf locations", error);
+                                    setError("Failed to update shelf locations.");
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            className="w-full bg-purple-600 text-white py-3 rounded-xl font-medium shadow-lg shadow-purple-600/20 hover:bg-purple-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                            {loading ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />}
                             Update Shelf Locations
                         </button>
                     </div>

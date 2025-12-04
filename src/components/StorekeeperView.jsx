@@ -14,22 +14,49 @@ import {
     MoreVertical,
     Database,
     Loader2,
-    CheckCircle
+    CheckCircle,
+    Milk,
+    Apple,
+    Carrot,
+    Beef,
+    Wheat,
+    Candy,
+    Droplet,
+    UtensilsCrossed,
+    Fish,
+    IceCream,
+    Pizza,
+    Sandwich,
+    Coffee,
+    Beer,
+    Wine,
+    Cigarette,
+    X,
+    Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { getInventory, seedDatabase } from '../services/api';
+import { getInventory, addProduct, updateProduct, getMandiPrices } from '../services/api';
+import { useTranslation } from 'react-i18next';
 
-
-
-// Mock Data for Market Prices (Keep until API supports it)
-const MOCK_MARKET_PRICES = [
-    { id: 1, item: 'Onion (Nashik)', storePrice: 40, marketPrice: 35, trend: 'down', lastUpdated: '10:30 AM' },
-    { id: 2, item: 'Potato (Agra)', storePrice: 20, marketPrice: 22, trend: 'up', lastUpdated: '11:00 AM' },
-    { id: 3, item: 'Tomato (Local)', storePrice: 30, marketPrice: 28, trend: 'down', lastUpdated: '09:45 AM' },
-    { id: 4, item: 'Green Chilli', storePrice: 60, marketPrice: 65, trend: 'up', lastUpdated: '10:15 AM' },
-    { id: 5, item: 'Garlic', storePrice: 150, marketPrice: 160, trend: 'up', lastUpdated: 'Yesterday' },
-    { id: 6, item: 'Ginger', storePrice: 120, marketPrice: 110, trend: 'down', lastUpdated: 'Yesterday' },
+const ICONS = [
+    { name: 'package', icon: Package, label: 'General' },
+    { name: 'milk', icon: Milk, label: 'Dairy' },
+    { name: 'apple', icon: Apple, label: 'Fruit' },
+    { name: 'carrot', icon: Carrot, label: 'Veg' },
+    { name: 'beef', icon: Beef, label: 'Meat' },
+    { name: 'wheat', icon: Wheat, label: 'Grains' },
+    { name: 'candy', icon: Candy, label: 'Sweets' },
+    { name: 'droplet', icon: Droplet, label: 'Oil/Liq' },
+    { name: 'utensils', icon: UtensilsCrossed, label: 'Food' },
+    { name: 'fish', icon: Fish, label: 'Seafood' },
+    { name: 'ice-cream', icon: IceCream, label: 'Frozen' },
+    { name: 'pizza', icon: Pizza, label: 'Fast Food' },
+    { name: 'coffee', icon: Coffee, label: 'Beverage' },
 ];
+
+
+
+// Mock Data removed for real API integration
 
 const CATEGORIES = ['All', 'Grains', 'Pulses', 'Oil', 'Flour', 'Spices', 'Dairy', 'Snacks', 'Essentials'];
 
@@ -38,16 +65,36 @@ const StorekeeperView = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [products, setProducts] = useState([]);
+    const [marketPrices, setMarketPrices] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [seeding, setSeeding] = useState(false);
+    const { t, i18n } = useTranslation();
+
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        category: 'Grains',
+        price: '',
+        stock: '',
+        max_stock: '50',
+        shelf_position: '',
+        icon_name: 'package',
+        image_url: ''
+    });
+    const [submitting, setSubmitting] = useState(false);
 
     const fetchProducts = async () => {
         setLoading(true);
         try {
-            const data = await getInventory();
-            setProducts(data);
+            const [inventoryData, mandiData] = await Promise.all([
+                getInventory(),
+                getMandiPrices()
+            ]);
+            setProducts(inventoryData);
+            setMarketPrices(mandiData.prices || []);
         } catch (error) {
-            console.error("Failed to fetch inventory", error);
+            console.error("Failed to fetch data", error);
         } finally {
             setLoading(false);
         }
@@ -57,17 +104,72 @@ const StorekeeperView = () => {
         fetchProducts();
     }, []);
 
-    const handleSeedData = async () => {
-        setSeeding(true);
+    const handleAddClick = () => {
+        setEditingProduct(null);
+        setFormData({
+            name: '',
+            category: 'Grains',
+            price: '',
+            stock: '',
+            max_stock: '50',
+            shelf_position: '',
+            icon_name: 'package',
+            image_url: ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleEditClick = (product) => {
+        setEditingProduct(product);
+        setFormData({
+            name: product.name,
+            category: product.category,
+            price: product.price,
+            stock: product.stock,
+            max_stock: product.max_stock || '50',
+            shelf_position: product.shelf_position || '',
+            icon_name: product.icon_name || 'package',
+            image_url: product.image_url || ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleQuickAdd = async (product) => {
         try {
-            await seedDatabase();
-            await fetchProducts(); // Refresh data after seeding
-            alert("Dummy data added successfully!");
+            await updateProduct(product.id, { stock: product.stock + 1 });
+            // Optimistic update
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock + 1 } : p));
         } catch (error) {
-            console.error("Failed to seed data", error);
-            alert("Failed to add dummy data.");
+            console.error("Failed to quick add", error);
+        }
+    };
+
+
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            const payload = {
+                ...formData,
+                price: parseFloat(formData.price),
+                stock: parseInt(formData.stock),
+                max_stock: parseInt(formData.max_stock)
+            };
+
+            if (editingProduct) {
+                await updateProduct(editingProduct.id, payload);
+            } else {
+                await addProduct(payload);
+            }
+
+            await fetchProducts();
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to save product", error);
+            alert("Failed to save product");
         } finally {
-            setSeeding(false);
+            setSubmitting(false);
         }
     };
 
@@ -84,29 +186,28 @@ const StorekeeperView = () => {
             <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b border-border">
                 <div className="px-2 py-1">
                     <div className="flex items-center justify-between mb-2">
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Store Management</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('store_management')}</h1>
                         <button
-                            onClick={handleSeedData}
-                            disabled={seeding}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 hover:bg-secondary text-secondary-foreground rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                            onClick={handleAddClick}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-xs font-medium transition-colors shadow-sm shadow-primary/20"
                         >
-                            {seeding ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />}
-                            Add Dummy Data
+                            <Plus size={14} />
+                            {t('add_product')}
                         </button>
                     </div>
-                    <div className="flex p-1 bg-muted/50 rounded-xl">
+                    <div className="flex p-1 bg-muted/50 rounded-xl overflow-x-auto no-scrollbar">
                         {['catalog', 'shortfall', 'prices'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={cn(
-                                    "flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 capitalize",
+                                    "flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 capitalize min-w-[80px]",
                                     activeTab === tab
                                         ? "bg-background text-foreground shadow-sm"
                                         : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
-                                {tab === 'shortfall' ? 'Alerts' : tab}
+                                {tab === 'shortfall' ? t('alerts') : t(tab)}
                             </button>
                         ))}
                     </div>
@@ -125,7 +226,7 @@ const StorekeeperView = () => {
                                 <Search size={20} className="text-muted-foreground" />
                                 <input
                                     type="text"
-                                    placeholder="Search products..."
+                                    placeholder={t('search_products')}
                                     className="flex-1 outline-none bg-transparent text-foreground placeholder-muted-foreground"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -161,25 +262,48 @@ const StorekeeperView = () => {
                             <div className="grid grid-cols-1 gap-3">
                                 {filteredProducts.length > 0 ? filteredProducts.map(product => (
                                     <div key={product.id} className="bg-card p-4 rounded-2xl shadow-sm border border-border flex items-center gap-4 active:scale-[0.99] transition-transform">
-                                        <div className="w-16 h-16 bg-muted/50 rounded-xl flex items-center justify-center text-3xl shrink-0">
-                                            {/* Use a default icon if image is missing or URL */}
-                                            {product.image_url ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-xl" /> : '📦'}
+                                        <div className="w-16 h-16 bg-muted/50 rounded-xl flex items-center justify-center text-3xl shrink-0 overflow-hidden">
+                                            {product.image_url ? (
+                                                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                (() => {
+                                                    const IconComponent = ICONS.find(i => i.name === product.icon_name)?.icon || Package;
+                                                    return <IconComponent className="text-muted-foreground" size={32} />;
+                                                })()
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-semibold text-foreground truncate">{product.name}</h3>
                                             <p className="text-xs text-muted-foreground">{product.category || 'General'}</p>
                                             <div className="flex items-center gap-3 mt-1.5">
                                                 <span className="text-sm font-bold text-primary">₹{product.price}</span>
-                                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">Stock: {product.stock}</span>
+                                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{t('stock')}: {product.stock}</span>
+                                                {product.shelf_position && (
+                                                    <span className="text-xs text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
+                                                        {product.shelf_position}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
-                                        <button className="p-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors">
-                                            <Plus size={20} />
-                                        </button>
+                                        <div className="flex flex-col gap-2">
+                                            <button
+                                                onClick={() => handleQuickAdd(product)}
+                                                className="p-2.5 bg-green-500/10 text-green-600 rounded-xl hover:bg-green-500/20 transition-colors active:scale-95"
+                                                title={t('quick_add')}
+                                            >
+                                                <Plus size={20} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleEditClick(product)}
+                                                className="p-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors active:scale-95"
+                                            >
+                                                <MoreVertical size={20} />
+                                            </button>
+                                        </div>
                                     </div>
                                 )) : (
                                     <div className="text-center py-12 text-muted-foreground">
-                                        No products found. Try adding dummy data.
+                                        {t('no_sales')}
                                     </div>
                                 )}
                             </div>
@@ -192,28 +316,33 @@ const StorekeeperView = () => {
                     <div className="px-2 py-4 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="flex items-center gap-2 mb-2">
                             <AlertTriangle className="text-red-500" size={20} />
-                            <h2 className="text-lg font-bold text-foreground">Low Stock Alerts</h2>
+                            <h2 className="text-lg font-bold text-foreground">{t('low_stock_items')}</h2>
                         </div>
 
                         <div className="space-y-3">
-                            {products.filter(p => p.stock < 10).length > 0 ? (
-                                products.filter(p => p.stock < 10).map(item => (
-                                    <div key={item.id} className={cn(
-                                        "bg-card p-4 rounded-2xl border-l-4 shadow-sm flex justify-between items-center",
-                                        item.stock < 5 ? "border-l-red-500" : "border-l-orange-500"
-                                    )}>
-                                        <div>
-                                            <h3 className="font-semibold text-foreground">{item.name}</h3>
-                                            <div className="flex gap-3 mt-1 text-sm">
-                                                <p className="text-muted-foreground">Current: <span className="font-bold text-foreground">{item.stock}</span></p>
-                                                <p className="text-muted-foreground">Reorder: 10</p>
+                            {products.filter(p => p.stock < (p.max_stock || 50)).length > 0 ? (
+                                products.filter(p => p.stock < (p.max_stock || 50)).map(item => {
+                                    const maxStock = item.max_stock || 50;
+                                    const shortfall = maxStock - item.stock;
+                                    return (
+                                        <div key={item.id} className={cn(
+                                            "bg-card p-4 rounded-2xl border-l-4 shadow-sm flex justify-between items-center",
+                                            item.stock < 5 ? "border-l-red-500" : "border-l-orange-500"
+                                        )}>
+                                            <div>
+                                                <h3 className="font-semibold text-foreground">{item.name}</h3>
+                                                <div className="flex gap-3 mt-1 text-sm">
+                                                    <p className="text-muted-foreground">Current: <span className="font-bold text-foreground">{item.stock}</span></p>
+                                                    <p className="text-muted-foreground">Target: {maxStock}</p>
+                                                    <p className="text-red-500 font-medium">Shortfall: {shortfall}</p>
+                                                </div>
                                             </div>
+                                            <button className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-xl shadow-sm shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all">
+                                                {t('restock')}
+                                            </button>
                                         </div>
-                                        <button className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-xl shadow-sm shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all">
-                                            Restock
-                                        </button>
-                                    </div>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <div className="text-center py-8 text-muted-foreground bg-card rounded-2xl border border-border">
                                     <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-500 opacity-50" />
@@ -224,7 +353,7 @@ const StorekeeperView = () => {
 
                         <div className="bg-blue-500/10 p-5 rounded-2xl border border-blue-500/20 mt-6">
                             <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-2">
-                                <TrendingUp size={16} /> Smart Suggestion
+                                <TrendingUp size={16} /> {t('smart_suggestion')}
                             </h3>
                             <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
                                 Based on sales velocity, you should order <strong>20 units</strong> of Milk and <strong>50kg</strong> of Sugar to cover the weekend rush.
@@ -238,7 +367,7 @@ const StorekeeperView = () => {
                     <div className="px-2 py-4 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="text-green-500" size={20} />
-                            <h2 className="text-lg font-bold text-foreground">Market Intelligence</h2>
+                            <h2 className="text-lg font-bold text-foreground">{t('market_intelligence')}</h2>
                         </div>
 
                         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
@@ -246,40 +375,216 @@ const StorekeeperView = () => {
                                 <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border">
                                     <tr>
                                         <th className="px-4 py-3">Item</th>
-                                        <th className="px-4 py-3">Store</th>
                                         <th className="px-4 py-3">Market</th>
-                                        <th className="px-4 py-3 text-right">Trend</th>
+                                        <th className="px-4 py-3">Price (₹/q)</th>
+                                        <th className="px-4 py-3 text-right">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {MOCK_MARKET_PRICES.map(item => (
-                                        <tr key={item.id} className="hover:bg-muted/50 transition-colors">
+                                    {marketPrices.length > 0 ? marketPrices.map((item, index) => (
+                                        <tr key={index} className="hover:bg-muted/50 transition-colors">
                                             <td className="px-4 py-3 font-medium text-foreground">
-                                                {item.item}
-                                                <div className="text-[10px] text-muted-foreground font-normal">{item.lastUpdated}</div>
+                                                {item.Commodity}
+                                                <div className="text-[10px] text-muted-foreground font-normal">{item.Market}</div>
                                             </td>
-                                            <td className="px-4 py-3 text-muted-foreground">₹{item.storePrice}</td>
-                                            <td className="px-4 py-3 text-muted-foreground">₹{item.marketPrice}</td>
-                                            <td className="px-4 py-3 text-right">
-                                                {item.trend === 'up' ? (
-                                                    <div className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full text-xs font-bold">
-                                                        <ArrowUpRight size={14} /> +{(item.marketPrice - item.storePrice).toFixed(0)}
-                                                    </div>
-                                                ) : (
-                                                    <div className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-1 rounded-full text-xs font-bold">
-                                                        <ArrowDownRight size={14} /> -{(item.storePrice - item.marketPrice).toFixed(0)}
-                                                    </div>
-                                                )}
+                                            <td className="px-4 py-3 text-muted-foreground">{item.District}</td>
+                                            <td className="px-4 py-3 font-bold text-primary">₹{item.Modal_Price}</td>
+                                            <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                                                {item.Arrival_Date}
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="4" className="px-4 py-8 text-center text-muted-foreground">
+                                                {loading ? <Loader2 className="animate-spin mx-auto" /> : "No market data available"}
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 )}
+
+
             </div>
-        </div>
+
+            {/* Add/Edit Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-0">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+                    <div className="relative bg-card w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-border max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-10 fade-in duration-300">
+                        <div className="sticky top-0 bg-card/80 backdrop-blur-md p-4 border-b border-border flex items-center justify-between z-10">
+                            <h2 className="text-lg font-bold text-foreground">
+                                {editingProduct ? t('edit_product') : t('add_product')}
+                            </h2>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-muted rounded-full transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            {/* Icon/Image Selector */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium text-muted-foreground">{t('product_visual')}</label>
+                                <div className="bg-muted/30 p-4 rounded-2xl border border-border">
+                                    <div className="flex gap-2 mb-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, image_url: '' })}
+                                            className={cn(
+                                                "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
+                                                !formData.image_url ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
+                                            )}
+                                        >
+                                            {t('select_icon')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, image_url: 'https://' })}
+                                            className={cn(
+                                                "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
+                                                formData.image_url ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
+                                            )}
+                                        >
+                                            {t('image_url')}
+                                        </button>
+                                    </div>
+
+                                    {!formData.image_url ? (
+                                        <div className="grid grid-cols-5 gap-2">
+                                            {ICONS.map((item) => (
+                                                <button
+                                                    key={item.name}
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, icon_name: item.name })}
+                                                    className={cn(
+                                                        "aspect-square flex flex-col items-center justify-center gap-1 rounded-xl transition-all",
+                                                        formData.icon_name === item.name
+                                                            ? "bg-primary text-primary-foreground shadow-md scale-105"
+                                                            : "bg-background text-muted-foreground hover:bg-muted hover:scale-105"
+                                                    )}
+                                                >
+                                                    <item.icon size={20} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 bg-background p-2 rounded-xl border border-border focus-within:ring-2 focus-within:ring-primary/20">
+                                                <ImageIcon size={18} className="text-muted-foreground" />
+                                                <input
+                                                    type="url"
+                                                    placeholder="https://example.com/image.jpg"
+                                                    className="flex-1 bg-transparent outline-none text-sm"
+                                                    value={formData.image_url}
+                                                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                                                />
+                                            </div>
+                                            {formData.image_url && (
+                                                <div className="aspect-video rounded-xl bg-black/5 overflow-hidden border border-border">
+                                                    <img
+                                                        src={formData.image_url}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => e.target.style.display = 'none'}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted-foreground">{t('product_name')}</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="e.g. Sona Masoori Rice"
+                                        className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-muted-foreground">{t('category')}</label>
+                                        <select
+                                            className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
+                                            value={formData.category}
+                                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                        >
+                                            {CATEGORIES.filter(c => c !== 'All').map(c => (
+                                                <option key={c} value={c}>{c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-muted-foreground">{t('shelf_position')}</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. A1"
+                                            className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                            value={formData.shelf_position}
+                                            onChange={(e) => setFormData({ ...formData, shelf_position: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-muted-foreground">{t('price')} (₹)</label>
+                                        <input
+                                            required
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                            value={formData.price}
+                                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-muted-foreground">{t('stock')}</label>
+                                        <input
+                                            required
+                                            type="number"
+                                            min="0"
+                                            className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                            value={formData.stock}
+                                            onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-muted-foreground">Max Stock</label>
+                                        <input
+                                            required
+                                            type="number"
+                                            min="0"
+                                            className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                            value={formData.max_stock}
+                                            onChange={(e) => setFormData({ ...formData, max_stock: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/25 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {submitting ? <Loader2 className="animate-spin" /> : <CheckCircle />}
+                                {editingProduct ? t('update_product') : t('save_product')}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div >
     );
 };
 

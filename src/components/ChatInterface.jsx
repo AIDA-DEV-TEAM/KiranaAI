@@ -10,7 +10,10 @@ import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Capacitor } from '@capacitor/core';
 import ThemeToggle from './ThemeToggle';
 
+import { useTranslation } from 'react-i18next';
+
 const ChatInterface = ({ messages, setMessages }) => {
+    const { t, i18n } = useTranslation();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isLiveMode, setIsLiveMode] = useState(false);
@@ -58,7 +61,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                 content: msg.content
             }));
 
-            const data = await chatWithData(userMessage, history);
+            const data = await chatWithData(userMessage, history, i18n.language);
             setMessages(prev => [...prev, {
                 role: 'assistant',
                 content: data.response,
@@ -68,7 +71,7 @@ const ChatInterface = ({ messages, setMessages }) => {
         } catch (error) {
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: "Sorry, I encountered an error processing your request."
+                content: t('error_processing_request')
             }]);
         } finally {
             setIsLoading(false);
@@ -102,7 +105,7 @@ const ChatInterface = ({ messages, setMessages }) => {
             if (!permissionGranted) {
                 const granted = await checkPermission();
                 if (!granted && Capacitor.isNativePlatform()) {
-                    alert("Microphone permission is required. Please enable it in settings.");
+                    alert(t('mic_permission_required'));
                     setIsLiveMode(false);
                     return;
                 }
@@ -220,7 +223,7 @@ const ChatInterface = ({ messages, setMessages }) => {
             console.error("Error accessing microphone:", err);
             if (isLiveModeRef.current) {
                 setIsLiveMode(false);
-                alert("Could not access microphone. Please ensure permissions are granted.");
+                alert(t('mic_access_error'));
             }
         }
     };
@@ -235,8 +238,8 @@ const ChatInterface = ({ messages, setMessages }) => {
     return (
         <div className="flex flex-col h-full bg-background md:rounded-2xl md:shadow-xl md:border border-border overflow-hidden relative font-sans">
 
-            {/* Header - Mobile Only */}
-            <div className="md:hidden absolute top-0 left-0 right-0 pt-safe h-[calc(3.5rem+env(safe-area-inset-top))] bg-background/80 backdrop-blur-md border-b border-border z-10 flex items-center px-4 justify-between transition-all duration-300">
+            {/* Header - Desktop & Mobile */}
+            <div className="absolute top-0 left-0 right-0 pt-safe h-[calc(3.5rem+env(safe-area-inset-top))] bg-background/80 backdrop-blur-md border-b border-border z-10 flex items-center px-4 justify-between transition-all duration-300">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
                         <Bot size={20} />
@@ -244,7 +247,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                     <div>
                         <h3 className="font-bold text-foreground text-sm">Kirana Assistant</h3>
                         <p className="text-[10px] font-medium text-green-500 flex items-center gap-1.5 bg-green-500/10 px-2 py-0.5 rounded-full w-fit">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Online
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> {t('online')}
                         </p>
                     </div>
                 </div>
@@ -253,6 +256,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                     <button
                         onClick={() => setIsLiveMode(true)}
                         className="p-2.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors active:scale-95"
+                        title={t('live_mode')}
                     >
                         <Mic size={20} />
                     </button>
@@ -268,7 +272,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                     <div className="absolute top-0 left-0 right-0 p-6 pt-safe flex justify-between items-center z-10">
                         <div className="flex items-center gap-2 text-foreground/70">
                             <Sparkles size={18} className="text-primary" />
-                            <span className="text-sm font-medium tracking-wide">Gemini Live</span>
+                            <span className="text-sm font-medium tracking-wide">KiranaAI</span>
                         </div>
                         <button
                             onClick={() => setIsLiveMode(false)}
@@ -284,7 +288,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                         {/* Status Text */}
                         <div className="absolute top-1/4 text-center space-y-2 animate-in slide-in-from-bottom-4 duration-700">
                             <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
-                                {isProcessing ? "Thinking..." : isSpeakingState ? "Hearing Voice..." : "Listening..."}
+                                {isProcessing ? t('thinking') : isSpeakingState ? t('hearing') : t('listening')}
                             </h2>
                         </div>
 
@@ -346,14 +350,14 @@ const ChatInterface = ({ messages, setMessages }) => {
                             onClick={() => setIsLiveMode(false)}
                             className="px-8 py-3 rounded-full bg-destructive/10 text-destructive border border-destructive/20 font-medium hover:bg-destructive/20 transition-colors"
                         >
-                            End Session
+                            {t('end_session')}
                         </button>
                     </div>
                 </div>
             )}
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 pt-[calc(4rem+env(safe-area-inset-top))] md:pt-4 space-y-6 scroll-smooth no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 pt-[calc(4rem+env(safe-area-inset-top))] space-y-6 scroll-smooth no-scrollbar">
                 {messages.map((msg, index) => (
                     <div
                         key={index}
@@ -410,7 +414,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                         </div>
                         <div className="bg-card p-4 rounded-2xl rounded-tl-sm border border-border shadow-sm flex items-center gap-3">
                             <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                            <span className="text-sm text-muted-foreground">Thinking...</span>
+                            <span className="text-sm text-muted-foreground">{t('thinking')}</span>
                         </div>
                     </div>
                 )}
@@ -420,20 +424,12 @@ const ChatInterface = ({ messages, setMessages }) => {
             {/* Input Area */}
             <div className="p-3 bg-background/80 backdrop-blur-xl border-t border-border sticky bottom-0 z-20 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] md:pb-4">
                 <form onSubmit={handleSend} className="flex gap-2 items-end max-w-4xl mx-auto">
-                    <button
-                        type="button"
-                        onClick={() => setIsLiveMode(true)}
-                        className="p-3 text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-all duration-200 active:scale-95 hidden md:flex"
-                        title="Live Mode"
-                    >
-                        <Mic size={22} />
-                    </button>
                     <div className="flex-1 relative bg-muted/50 rounded-2xl border border-transparent focus-within:border-primary/50 focus-within:bg-background transition-all duration-200">
                         <input
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Ask anything..."
+                            placeholder={t('ask_anything')}
                             className="w-full pl-4 pr-12 py-3.5 bg-transparent text-foreground placeholder-muted-foreground focus:outline-none rounded-2xl"
                             disabled={isLoading}
                         />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MessageSquare, LayoutDashboard, Store, Menu, X, Package } from 'lucide-react';
+import { MessageSquare, LayoutDashboard, Store, Menu, X, Package, Phone, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
 import ThemeToggle from './ThemeToggle';
 
@@ -14,6 +14,7 @@ const Layout = ({ children }) => {
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: Store, label: 'Store', path: '/storekeeper' },
         { icon: Package, label: 'Stock', path: '/stock' },
+        { icon: Settings, label: 'Settings', path: '/settings' },
     ];
 
     return (

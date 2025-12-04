@@ -6,8 +6,8 @@ export const api = axios.create({
     baseURL: API_URL,
 });
 
-export const chatWithData = async (message, history = []) => {
-    const response = await api.post('/chat/', { message, history });
+export const chatWithData = async (message, history = [], language = 'en') => {
+    const response = await api.post('/chat/', { message, history, language });
     return response.data;
 };
 
@@ -55,8 +55,18 @@ export const importInventory = async (products) => {
     return response.data;
 };
 
-export const seedDatabase = async () => {
-    const response = await api.post('/seed');
+export const addProduct = async (product) => {
+    const response = await api.post('/inventory/', product);
+    return response.data;
+};
+
+export const updateProduct = async (id, product) => {
+    const response = await api.put(`/inventory/${id}`, product);
+    return response.data;
+};
+
+export const updateShelfLocations = async (items) => {
+    const response = await api.post('/inventory/shelf/bulk', items);
     return response.data;
 };
 

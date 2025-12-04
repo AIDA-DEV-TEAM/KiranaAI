@@ -57,7 +57,7 @@ You must **ALWAYS** reply with a valid JSON object. Do not output any text outsi
 
 model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
 
-async def process_chat_message(message: str, db: Session, history: list = []):
+async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en"):
     if not api_key:
         raise Exception("Gemini API key not configured")
 
@@ -71,7 +71,7 @@ async def process_chat_message(message: str, db: Session, history: list = []):
         gemini_history.append({"role": role, "parts": [msg.get("content")]})
 
     chat_session = model.start_chat(history=gemini_history)
-    prompt = f"User: {message}\n"
+    prompt = f"User: {message}\nLanguage: {language}\nRespond in {language}.\n"
 
     try:
         response = chat_session.send_message(prompt)
@@ -135,7 +135,7 @@ async def process_chat_message(message: str, db: Session, history: list = []):
                 3. **CRITICAL**: If you have data about remaining stock, YOU MUST mention it.
                    - Example: "Sold 2 milk. Remaining stock: 8"
                    - Example: "Added 10 sugar. Total stock is now: 50"
-                4. **CRITICAL**: Reply in the SAME language as the user's question.
+                4. **CRITICAL**: Reply in the SAME language as the user's question ({language}).
                 5. **Output Format**: Return a JSON object: `{{ "type": "answer", "content": "..." }}`
                 """
                 

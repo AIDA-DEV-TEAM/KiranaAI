@@ -22,7 +22,7 @@ async def chat(request: models.ChatRequest, db: Session = Depends(get_db)):
         # Convert Pydantic models to dicts for the service
         history = [msg.dict() for msg in request.history]
         
-        result = await process_chat_message(request.message, db, history)
+        result = await process_chat_message(request.message, db, history, request.language)
         return result
         
     except Exception as e:

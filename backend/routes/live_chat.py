@@ -2,10 +2,11 @@ import os
 import io
 import base64
 import google.generativeai as genai
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from gtts import gTTS
+from sqlalchemy import text
+import edge_tts
 from .. import database, models
 from ..services.chat_service import process_chat_message
 from dotenv import load_dotenv
@@ -26,8 +27,6 @@ def get_db():
     finally:
         db.close()
 
-
-
 def detect_language(text):
     for char in text:
         if '\u0900' <= char <= '\u097F': # Devanagari
@@ -37,7 +36,7 @@ def detect_language(text):
     return 'en'
 
 @router.post("/chat")
-async def live_chat(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def live_chat(file: UploadFile = File(...), language: str = Form("en"), db: Session = Depends(get_db)):
     try:
         # Read audio file
         audio_content = await file.read()
@@ -46,30 +45,46 @@ async def live_chat(file: UploadFile = File(...), db: Session = Depends(get_db))
         model = genai.GenerativeModel('gemini-2.5-flash')
         transcription_response = model.generate_content([
             {"mime_type": file.content_type or "audio/webm", "data": audio_content},
-            "Listen to this audio and transcribe it exactly into text. Do not add any other words."
+            f"Listen to this audio and transcribe it exactly into text. The language is likely {language}. Do not add any other words."
         ])
         user_message = transcription_response.text.strip()
         print(f"User said: {user_message}")
 
         # 2. Process with Chat Service (SQL Generation)
         # We don't have history for voice chat yet, passing empty list
-        result = await process_chat_message(user_message, db, history=[])
+        result = await process_chat_message(user_message, db, history=[], language=language)
         text_response = result["response"]
         
-        # 3. Convert Response to Audio
-        lang = detect_language(text_response)
-        tts = gTTS(text=text_response, lang=lang, tld='co.in' if lang == 'en' else 'com') 
+        # 3. Convert Response to Audio (using edge-tts)
+        voice_map = {
+            'hi': 'hi-IN-SwaraNeural',
+            'te': 'te-IN-ShrutiNeural',
+            'ta': 'ta-IN-PallaviNeural',
+            'kn': 'kn-IN-GaganNeural',
+            'ml': 'ml-IN-SobhanaNeural',
+            'mr': 'mr-IN-AarohiNeural',
+            'gu': 'gu-IN-DhwaniNeural',
+            'bn': 'bn-IN-TanishaaNeural',
+            'pa': 'pa-IN-OjasNeural',
+            'en': 'en-IN-NeerjaNeural' # Default Indian English
+        }
+        
+        voice = voice_map.get(language, 'en-IN-NeerjaNeural')
+        communicate = edge_tts.Communicate(text_response, voice)
         
         mp3_fp = io.BytesIO()
-        tts.write_to_fp(mp3_fp)
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                mp3_fp.write(chunk["data"])
+                
         mp3_fp.seek(0)
         audio_base64 = base64.b64encode(mp3_fp.read()).decode('utf-8')
         
         return {
             "text_response": text_response,
             "audio_base64": audio_base64,
-            "language": lang,
-            "sql_query": result.get("sql_query")
+            "language": language
+            # "sql_query": result.get("sql_query") # Hidden from frontend
         }
         
     except Exception as e:

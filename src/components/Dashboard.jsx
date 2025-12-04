@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Package, TrendingUp, AlertTriangle, ArrowUpRight, ArrowDownRight, Clock, Database, Loader2 } from 'lucide-react';
-import { getInventory, getSales, seedDatabase } from '../services/api';
+import { getInventory, getSales } from '../services/api';
 import { cn } from '../lib/utils';
+import { useTranslation } from 'react-i18next';
 
 const Dashboard = () => {
+    const { t } = useTranslation();
     const [inventory, setInventory] = useState([]);
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -25,20 +27,6 @@ const Dashboard = () => {
         fetchData();
     }, []);
 
-    const handleSeedData = async () => {
-        setSeeding(true);
-        try {
-            await seedDatabase();
-            await fetchData(); // Refresh data after seeding
-            alert("Dummy data added successfully!");
-        } catch (error) {
-            console.error("Failed to seed data", error);
-            alert("Failed to add dummy data.");
-        } finally {
-            setSeeding(false);
-        }
-    };
-
     if (loading) {
         return (
             <div className="flex justify-center items-center h-[50vh]">
@@ -47,14 +35,14 @@ const Dashboard = () => {
         );
     }
 
-    const lowStockItems = inventory.filter(item => item.stock < 10);
+    const lowStockItems = inventory.filter(item => item.stock < (item.max_stock || 50));
     const totalSalesToday = sales
         .filter(sale => new Date(sale.timestamp).toDateString() === new Date().toDateString())
         .reduce((sum, sale) => sum + sale.total_amount, 0);
 
     const stats = [
         {
-            label: "Total Products",
+            label: t('total_products'),
             value: inventory.length,
             icon: Package,
             color: "text-blue-600 dark:text-blue-400",
@@ -63,7 +51,7 @@ const Dashboard = () => {
             trendUp: true
         },
         {
-            label: "Today's Sales",
+            label: t('todays_sales'),
             value: `₹${totalSalesToday.toFixed(0)}`,
             icon: TrendingUp,
             color: "text-emerald-600 dark:text-emerald-400",
@@ -72,7 +60,7 @@ const Dashboard = () => {
             trendUp: true
         },
         {
-            label: "Low Stock Items",
+            label: t('low_stock_items'),
             value: lowStockItems.length,
             icon: AlertTriangle,
             color: "text-orange-600 dark:text-orange-400",
@@ -86,19 +74,11 @@ const Dashboard = () => {
         <div className="p-4 space-y-8 pb-safe">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground">{t('dashboard')}</h2>
                     <div className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full w-fit mt-2">
                         {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                     </div>
                 </div>
-                <button
-                    onClick={handleSeedData}
-                    disabled={seeding}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 hover:bg-secondary text-secondary-foreground rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                >
-                    {seeding ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />}
-                    Add Dummy Data
-                </button>
             </div>
 
             {/* Stats Cards */}
@@ -128,8 +108,8 @@ const Dashboard = () => {
             {/* Recent Sales Table */}
             <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
                 <div className="p-6 border-b border-border flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-foreground">Recent Sales</h3>
-                    <button className="text-sm text-primary font-medium hover:underline">View All</button>
+                    <h3 className="text-lg font-semibold text-foreground">{t('recent_sales')}</h3>
+                    <button className="text-sm text-primary font-medium hover:underline">{t('view_all')}</button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
@@ -161,7 +141,7 @@ const Dashboard = () => {
                             {sales.length === 0 && (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
-                                        No sales recorded today
+                                        {t('no_sales')}
                                     </td>
                                 </tr>
                             )}

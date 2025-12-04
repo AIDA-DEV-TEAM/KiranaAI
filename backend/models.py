@@ -7,8 +7,10 @@ class ProductBase(BaseModel):
     category: str
     price: float
     stock: int
+    max_stock: int = 50 # Default max stock
     shelf_position: Optional[str] = None
     image_url: Optional[str] = None
+    icon_name: Optional[str] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -29,10 +31,12 @@ class Sale(BaseModel):
     quantity: int
     total_amount: float
     timestamp: datetime
-    product_name: Optional[str] = None # Helper for frontend display
 
     class Config:
         from_attributes = True
+
+class SaleResponse(Sale):
+    product_name: Optional[str] = None
 
 class ChatMessage(BaseModel):
     role: str
@@ -41,6 +45,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: Optional[List[ChatMessage]] = []
+    language: Optional[str] = "en"
 
 class ChatResponse(BaseModel):
     response: str
