@@ -87,15 +87,20 @@ const StorekeeperView = () => {
     const fetchProducts = async () => {
         setLoading(true);
         try {
-            const [inventoryData, mandiData] = await Promise.all([
-                getInventory(),
-                getMandiPrices()
-            ]);
+            // Fetch inventory first for faster load
+            const inventoryData = await getInventory();
             setProducts(inventoryData);
-            setMarketPrices(mandiData.prices || []);
+            setLoading(false); // Stop loading indicator for main view
+
+            // Fetch market prices in background
+            try {
+                const mandiData = await getMandiPrices();
+                setMarketPrices(mandiData.prices || []);
+            } catch (err) {
+                console.error("Failed to fetch mandi prices", err);
+            }
         } catch (error) {
-            console.error("Failed to fetch data", error);
-        } finally {
+            console.error("Failed to fetch inventory", error);
             setLoading(false);
         }
     };
@@ -356,7 +361,25 @@ const StorekeeperView = () => {
                                 <TrendingUp size={16} /> {t('smart_suggestion')}
                             </h3>
                             <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
-                                Based on sales velocity, you should order <strong>20 units</strong> of Milk and <strong>50kg</strong> of Sugar to cover the weekend rush.
+                                {products.filter(p => p.stock < (p.max_stock || 50)).length > 0 ? (
+                                    (() => {
+                                        // Find item with highest shortfall
+                                        const criticalItem = [...products]
+                                            .filter(p => p.stock < (p.max_stock || 50))
+                                            .sort((a, b) => ((b.max_stock || 50) - b.stock) - ((a.max_stock || 50) - a.stock))[0];
+
+                                        const shortfall = (criticalItem.max_stock || 50) - criticalItem.stock;
+
+                                        return (
+                                            <>
+                                                Priority Action: Restock <strong>{criticalItem.name}</strong> immediately.
+                                                You are short by <strong>{shortfall} units</strong> to meet your target of {criticalItem.max_stock || 50}.
+                                            </>
+                                        );
+                                    })()
+                                ) : (
+                                    "Great job! Your inventory levels are optimized. No urgent restocking needed."
+                                )}
                             </p>
                         </div>
                     </div>
@@ -384,13 +407,13 @@ const StorekeeperView = () => {
                                     {marketPrices.length > 0 ? marketPrices.map((item, index) => (
                                         <tr key={index} className="hover:bg-muted/50 transition-colors">
                                             <td className="px-4 py-3 font-medium text-foreground">
-                                                {item.Commodity}
-                                                <div className="text-[10px] text-muted-foreground font-normal">{item.Market}</div>
+                                                {item.commodity}
+                                                <div className="text-[10px] text-muted-foreground font-normal">{item.market}</div>
                                             </td>
-                                            <td className="px-4 py-3 text-muted-foreground">{item.District}</td>
-                                            <td className="px-4 py-3 font-bold text-primary">₹{item.Modal_Price}</td>
+                                            <td className="px-4 py-3 text-muted-foreground">{item.district}</td>
+                                            <td className="px-4 py-3 font-bold text-primary">₹{item.modal_price}</td>
                                             <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                                                {item.Arrival_Date}
+                                                {item.arrival_date}
                                             </td>
                                         </tr>
                                     )) : (
