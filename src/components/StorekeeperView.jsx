@@ -60,6 +60,7 @@ const ICONS = [
 // Mock Data removed for real API integration
 
 const CATEGORIES = ['All', 'Grains', 'Pulses', 'Oil', 'Flour', 'Spices', 'Dairy', 'Snacks', 'Essentials'];
+const SHELF_POSITIONS = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'D1', 'D2', 'Front', 'Counter', 'Storage'];
 
 const StorekeeperView = () => {
     const [activeTab, setActiveTab] = useState('catalog');
@@ -295,8 +296,8 @@ const StorekeeperView = () => {
                         </div>
 
                         <div className="space-y-3">
-                            {products.filter(p => p.stock < (p.max_stock || 50)).length > 0 ? (
-                                products.filter(p => p.stock < (p.max_stock || 50)).map(item => {
+                            {products.filter(p => p.stock <= ((p.max_stock || 50) * 0.5)).length > 0 ? (
+                                products.filter(p => p.stock <= ((p.max_stock || 50) * 0.5)).map(item => {
                                     const maxStock = item.max_stock || 50;
                                     const shortfall = maxStock - item.stock;
                                     return (
@@ -334,11 +335,11 @@ const StorekeeperView = () => {
                                 <TrendingUp size={16} /> {t('smart_suggestion')}
                             </h3>
                             <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
-                                {products.filter(p => p.stock < (p.max_stock || 50)).length > 0 ? (
+                                {products.filter(p => p.stock <= ((p.max_stock || 50) * 0.5)).length > 0 ? (
                                     (() => {
                                         // Find item with highest shortfall
                                         const criticalItem = [...products]
-                                            .filter(p => p.stock < (p.max_stock || 50))
+                                            .filter(p => p.stock <= ((p.max_stock || 50) * 0.5))
                                             .sort((a, b) => ((b.max_stock || 50) - b.stock) - ((a.max_stock || 50) - a.stock))[0];
 
                                         const shortfall = (criticalItem.max_stock || 50) - criticalItem.stock;
@@ -520,13 +521,16 @@ const StorekeeperView = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-muted-foreground">{t('shelf_position')}</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. A1"
-                                            className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                        <select
+                                            className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
                                             value={formData.shelf_position}
                                             onChange={(e) => setFormData({ ...formData, shelf_position: e.target.value })}
-                                        />
+                                        >
+                                            <option value="" disabled>Select Position</option>
+                                            {SHELF_POSITIONS.map(pos => (
+                                                <option key={pos} value={pos}>{pos}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
 

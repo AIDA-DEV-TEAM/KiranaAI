@@ -58,9 +58,13 @@ const ChatInterface = ({ messages, setMessages }) => {
 
     const handleSend = async (e, textOverride = null, source = 'text') => {
         if (e) e.preventDefault();
-        const textToSend = textOverride || input;
 
-        if (!textToSend.trim()) return;
+        // Use ref for latest state if called from listener closure
+        const currentInput = textOverride || (stateRef.current ? stateRef.current.input : input);
+        const currentMessages = stateRef.current ? stateRef.current.messages : messages;
+        const currentLang = stateRef.current ? stateRef.current.i18n.language : i18n.language;
+
+        if (!currentInput.trim()) return;
 
         if (isListening) stopListening();
         if (isSpeaking) {
@@ -69,16 +73,17 @@ const ChatInterface = ({ messages, setMessages }) => {
         }
 
         setInput('');
-        setMessages(prev => [...prev, { role: 'user', content: textToSend }]);
+        const newMessages = [...currentMessages, { role: 'user', content: currentInput }];
+        setMessages(newMessages);
         setIsLoading(true);
 
         try {
-            const history = messages.slice(1).map(msg => ({
+            const history = newMessages.slice(1).map(msg => ({
                 role: msg.role,
                 content: msg.content
             }));
 
-            const data = await chatWithData(textToSend, history, i18n.language);
+            const data = await chatWithData(currentInput, history, currentLang);
             const responseText = data.response;
 
             setMessages(prev => [...prev, {
@@ -141,29 +146,50 @@ const ChatInterface = ({ messages, setMessages }) => {
 
     const silenceTimer = useRef(null);
 
+    // Keep refs up to date for the listener
+    const stateRef = useRef({ input, messages, i18n });
+    useEffect(() => {
+        stateRef.current = { input, messages, i18n };
+    }, [input, messages, i18n]);
+
+    // Setup Speech Recognition Listener ONCE
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            SpeechRecognition.removeAllListeners().then(() => {
+                SpeechRecognition.addListener('partialResults', (data) => {
+                    if (data.matches && data.matches.length > 0) {
+                        const transcript = data.matches[0];
+                        setInput(transcript);
+
+                        // Auto-send after silence
+                        if (silenceTimer.current) clearTimeout(silenceTimer.current);
+                        silenceTimer.current = setTimeout(() => {
+                            // Use ref to access latest handleSend logic if needed, 
+                            // but simpler to just call handleSend with current refs
+                            handleSend(null, transcript, 'voice');
+                        }, 1500);
+                    }
+                });
+            });
+
+            return () => {
+                SpeechRecognition.removeAllListeners();
+                if (silenceTimer.current) clearTimeout(silenceTimer.current);
+            };
+        }
+    }, []); // Empty dependency array = run once on mount
+
     const startListening = async () => {
         if (Capacitor.isNativePlatform()) {
             try {
                 const { available } = await SpeechRecognition.available();
                 if (available) {
                     setIsListening(true);
-                    SpeechRecognition.start({
+                    // Just start, listener is already set up
+                    await SpeechRecognition.start({
                         language: i18n.language === 'hi' ? 'hi-IN' : 'en-US',
                         partialResults: true,
                         popup: false,
-                    });
-
-                    SpeechRecognition.addListener('partialResults', (data) => {
-                        if (data.matches && data.matches.length > 0) {
-                            const transcript = data.matches[0];
-                            setInput(transcript);
-
-                            // Auto-send after silence
-                            if (silenceTimer.current) clearTimeout(silenceTimer.current);
-                            silenceTimer.current = setTimeout(() => {
-                                handleSend(null, transcript, 'voice');
-                            }, 1500);
-                        }
                     });
                 }
             } catch (e) {

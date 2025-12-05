@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MessageSquare, LayoutDashboard, Store, Menu, X, Package, Phone, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
-import ThemeToggle from './ThemeToggle';
 
 const Layout = ({ children }) => {
     const location = useLocation();
