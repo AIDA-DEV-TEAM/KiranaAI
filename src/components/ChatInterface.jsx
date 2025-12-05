@@ -114,9 +114,12 @@ const ChatInterface = ({ messages, setMessages }) => {
                 speakableText = speakableText.replace(/^[-| :]+$/gm, '');
                 speakableText = speakableText.replace(/\n+/g, ' ').trim();
 
+                console.log(`[VoiceLoop] Speaking response (${speakableText.length} chars):`, speakableText.substring(0, 50) + "...");
+
                 if (speakableText) {
                     speakResponse(speakableText);
                 } else {
+                    console.log("[VoiceLoop] Empty speakable text, restarting listener manually");
                     // If nothing to speak, ensure we go back to listening if in live mode
                     if (isLiveMode) {
                         setTimeout(() => startListening(), 500);

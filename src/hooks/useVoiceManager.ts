@@ -114,9 +114,68 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
                 setIsStarting(false);
             }
         } else {
-            // Web not fully supported in this specialized hook
-            setVoiceState(VoiceState.IDLE);
-            setIsStarting(false);
+            // Web Speech API Support
+            try {
+                const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    console.warn("Web Speech API not supported");
+                    setVoiceState(VoiceState.IDLE);
+                    setIsStarting(false);
+                    return;
+                }
+
+                const recognition = new SpeechRecognition();
+                recognition.lang = stateRef.current.language || 'en-US';
+                recognition.continuous = false;
+                recognition.interimResults = true;
+
+                recognition.onstart = () => {
+                    console.log("Web Speech Started");
+                    setVoiceState(VoiceState.LISTENING);
+                    setIsStarting(false);
+                };
+
+                recognition.onresult = (event: any) => {
+                    const current = event.resultIndex;
+                    const transcriptResult = event.results[current][0].transcript;
+                    setTranscript(transcriptResult);
+
+                    if (silenceTimer.current) clearTimeout(silenceTimer.current);
+                    if (processTimer.current) clearTimeout(processTimer.current);
+
+                    // Web speech doesn't always support partial nicely, so we debounce processing
+                    processTimer.current = setTimeout(() => {
+                        setVoiceState(VoiceState.PROCESSING);
+                        if (stateRef.current.onInputComplete) {
+                            stateRef.current.onInputComplete(transcriptResult);
+                        }
+                    }, 1500);
+                };
+
+                recognition.onerror = (event: any) => {
+                    console.error("Web Speech Error", event.error);
+                    if (event.error === 'no-speech') {
+                        // Simple restart or idle? Let's go idle to avoid infinite loops if mic is broken
+                        setVoiceState(VoiceState.IDLE);
+                    } else {
+                        setVoiceState(VoiceState.IDLE);
+                    }
+                };
+
+                recognition.onend = () => {
+                    // If we didn't process, we go idle. If we processed, state changes elsewhere.
+                    if (stateRef.current.voiceState === VoiceState.LISTENING) {
+                        setVoiceState(VoiceState.IDLE);
+                    }
+                };
+
+                recognition.start();
+
+            } catch (e) {
+                console.error("Web Speech Setup Error", e);
+                setVoiceState(VoiceState.IDLE);
+                setIsStarting(false);
+            }
         }
     }, [stopListening]);
 
@@ -135,12 +194,28 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
         setIsSpeaking(true);
 
         const onComplete = () => {
-            console.log("TTS Complete - Restarting Listener");
+            if (stateRef.current.voiceState !== VoiceState.SPEAKING) return;
+
+            console.log("TTS Complete - Triggering Restart");
             setIsSpeaking(false);
+
+            // Critical: Force restart listener after small delay
+            // We use a timestamp check or just force it.
             setTimeout(() => {
+                console.log("Auto-restarting listener...");
                 startListening();
             }, 500);
         };
+
+        // SAFETY FAILSAFE: If TTS hangs successfully but doesn't fire onEnd, force complete after N seconds
+        // Estimate 150 words/min ~ 2.5 words/sec. 
+        const estimatedDuration = Math.max(3000, (text.split(' ').length / 2) * 1000 + 2000);
+        setTimeout(() => {
+            if (stateRef.current.voiceState === VoiceState.SPEAKING) {
+                console.warn("TTS Safe-guard timeout triggered. Forcing loop resume.");
+                cancelOutput().then(() => startListening());
+            }
+        }, estimatedDuration);
 
         const attemptWebSpeech = () => {
             console.log("Falling back to Web Speech API...");
