@@ -45,7 +45,8 @@ const resources = {
             "market_intelligence": "Market Intelligence",
             "alerts": "Alerts",
             "catalog": "Catalog",
-            "prices": "Prices"
+            "prices": "Prices",
+            "reorder": "Reorder"
         }
     },
     hi: {
@@ -91,7 +92,8 @@ const resources = {
             "market_intelligence": "बाजार खुफिया",
             "alerts": "चेतावनी",
             "catalog": "सूची",
-            "prices": "कीमतें"
+            "prices": "कीमतें",
+            "reorder": "पुनः ऑर्डर करें"
         }
     },
     bn: {
@@ -137,7 +139,8 @@ const resources = {
             "market_intelligence": "বাজার বুদ্ধিমত্তা",
             "alerts": "সতর্কতা",
             "catalog": "ক্যাটালগ",
-            "prices": "দাম"
+            "prices": "দাম",
+            "reorder": "পুনরায় অর্ডার"
         }
     },
     te: {
@@ -183,7 +186,8 @@ const resources = {
             "market_intelligence": "మార్కెట్ ఇంటెలిజెన్స్",
             "alerts": "హెచ్చరికలు",
             "catalog": "జాబితా",
-            "prices": "ధరలు"
+            "prices": "ధరలు",
+            "reorder": "మళ్లీ ఆర్డర్ చేయండి"
         }
     },
     ta: {
@@ -229,7 +233,8 @@ const resources = {
             "market_intelligence": "சந்தை நுண்ணறிவு",
             "alerts": "எச்சரிக்கைகள்",
             "catalog": "பட்டியல்",
-            "prices": "விலைகள்"
+            "prices": "விலைகள்",
+            "reorder": "மீண்டும் ஆர்டர்"
         }
     },
     mr: {
@@ -275,7 +280,8 @@ const resources = {
             "market_intelligence": "बाजार बुद्धिमत्ता",
             "alerts": "इशारे",
             "catalog": "कॅटलॉग",
-            "prices": "किंमती"
+            "prices": "किंमती",
+            "reorder": "पुन्हा ऑर्डर करा"
         }
     },
     gu: {
@@ -321,7 +327,8 @@ const resources = {
             "market_intelligence": "બજાર બુદ્ધિ",
             "alerts": "ચેતવણીઓ",
             "catalog": "કેટલોગ",
-            "prices": "કિંમતો"
+            "prices": "કિંમતો",
+            "reorder": "ફરીથી ઓર્ડર કરો"
         }
     },
     kn: {
@@ -367,7 +374,8 @@ const resources = {
             "market_intelligence": "ಮಾರುಕಟ್ಟೆ ಬುದ್ಧಿವಂತಿಕೆ",
             "alerts": "ಎಚ್ಚರಿಕೆಗಳು",
             "catalog": "ಕ್ಯಾಟಲಾಗ್",
-            "prices": "ಬೆಲೆಗಳು"
+            "prices": "ಬೆಲೆಗಳು",
+            "reorder": "ಮರುಕ್ರಮಗೊಳಿಸಿ"
         }
     },
     ml: {
@@ -413,7 +421,8 @@ const resources = {
             "market_intelligence": "വിപണി വിവരങ്ങൾ",
             "alerts": "അറിയിപ്പുകൾ",
             "catalog": "കാറ്റലോഗ്",
-            "prices": "വിലകൾ"
+            "prices": "വിലകൾ",
+            "reorder": "വീണ്ടും ഓർഡർ ചെയ്യുക"
         }
     },
     pa: {
@@ -459,7 +468,8 @@ const resources = {
             "market_intelligence": "ਮਾਰਕੀਟ ਇੰਟੈਲੀਜੈਂਸ",
             "alerts": "ਚੇਤਾਵਨੀਆਂ",
             "catalog": "ਕੈਟਾਲਾਗ",
-            "prices": "ਕੀਮਤਾਂ"
+            "prices": "ਕੀਮਤਾਂ",
+            "reorder": "ਮੁੜ-ਆਰਡਰ"
         }
     }
 };

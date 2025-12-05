@@ -48,7 +48,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                 setInput(transcript);
 
                 if (event.results[0].isFinal) {
-                    handleSend(null, transcript);
+                    handleSend(null, transcript, 'voice');
                 }
             };
 
@@ -56,7 +56,7 @@ const ChatInterface = ({ messages, setMessages }) => {
         }
     }, [i18n.language]);
 
-    const handleSend = async (e, textOverride = null) => {
+    const handleSend = async (e, textOverride = null, source = 'text') => {
         if (e) e.preventDefault();
         const textToSend = textOverride || input;
 
@@ -87,7 +87,10 @@ const ChatInterface = ({ messages, setMessages }) => {
                 sql: data.sql_query
             }]);
 
-            playTTS(responseText, isLiveMode);
+            // Only speak if source is voice or live mode is active
+            if (source === 'voice' || isLiveMode) {
+                playTTS(responseText, isLiveMode);
+            }
 
         } catch (error) {
             console.error("Chat error:", error);
@@ -103,8 +106,22 @@ const ChatInterface = ({ messages, setMessages }) => {
 
     const playTTS = async (text, autoRestartListening = false) => {
         try {
+            // Optimize text for speech: Remove markdown tables and code blocks
+            // 1. Remove code blocks
+            let speakableText = text.replace(/```[\s\S]*?```/g, '');
+            // 2. Remove tables (lines starting with |)
+            speakableText = speakableText.replace(/^\|.*$/gm, '');
+            // 3. Remove table separators (lines with - and |)
+            speakableText = speakableText.replace(/^[-| :]+$/gm, '');
+            // 4. Clean up extra whitespace
+            speakableText = speakableText.replace(/\n+/g, ' ').trim();
+
+            // If text is too long, maybe just speak the first sentence?
+            // For now, let's just speak the cleaned text.
+            if (!speakableText) return; // Nothing to speak (e.g. only table)
+
             setIsSpeaking(true);
-            const audioBlob = await getTTS(text, i18n.language);
+            const audioBlob = await getTTS(speakableText, i18n.language);
             const audioUrl = URL.createObjectURL(audioBlob);
 
             audioRef.current.src = audioUrl;
@@ -144,7 +161,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                             // Auto-send after silence
                             if (silenceTimer.current) clearTimeout(silenceTimer.current);
                             silenceTimer.current = setTimeout(() => {
-                                handleSend(null, transcript);
+                                handleSend(null, transcript, 'voice');
                             }, 1500);
                         }
                     });
@@ -327,7 +344,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                                     rehypePlugins={[rehypeHighlight]}
                                     components={{
                                         table: ({ node, ...props }) => (
-                                            <div className="overflow-x-auto my-4 rounded-xl border border-border/50 bg-card shadow-sm">
+                                            <div className="overflow-x-auto my-4 rounded-xl border border-border/50 bg-card shadow-sm max-w-[calc(100vw-4rem)] md:max-w-full">
                                                 <table className="min-w-full divide-y divide-border/50" {...props} />
                                             </div>
                                         ),

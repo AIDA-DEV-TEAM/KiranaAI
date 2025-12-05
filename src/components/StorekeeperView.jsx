@@ -407,9 +407,9 @@ const StorekeeperView = () => {
 
             {/* Add/Edit Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-0">
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 sm:p-0">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    <div className="relative bg-card w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-border max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-10 fade-in duration-300">
+                    <div className="relative bg-card w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-border max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-10 fade-in duration-300 pb-safe">
                         <div className="sticky top-0 bg-card/80 backdrop-blur-md p-4 border-b border-border flex items-center justify-between z-10">
                             <h2 className="text-lg font-bold text-foreground">
                                 {editingProduct ? t('edit_product') : t('add_product')}
