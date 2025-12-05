@@ -198,6 +198,7 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
         }
 
         clearTimers();
+        // Stop any existing audio/speech
         try { await SpeechRecognition.stop(); } catch (e) { }
         try { await TextToSpeech.stop(); } catch (e) { }
         window.speechSynthesis.cancel();
@@ -215,17 +216,8 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
             }, 500);
         };
 
-        // SAFETY: Global Failsafe
-        const estimatedDuration = Math.max(3000, (text.split(' ').length / 2) * 1000 + 2000);
-        setTimeout(() => {
-            if (stateRef.current.voiceState === VoiceState.SPEAKING) {
-                console.warn("TTS Safe-guard timeout triggered. Forcing loop resume.");
-                cancelOutput().then(() => startListening());
-            }
-        }, estimatedDuration);
-
         const attemptWebSpeech = () => {
-            console.log("Falling back to Web Speech API...");
+            console.log("Cloud TTS failed, using Web Fallback as last resort...");
             try {
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = stateRef.current.language;
@@ -235,19 +227,13 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
                     console.error("Web Speech API Error:", e);
                     onComplete();
                 };
-                setTimeout(() => {
-                    if (window.speechSynthesis.speaking) {
-                        window.speechSynthesis.cancel();
-                        onComplete();
-                    }
-                }, 10000);
                 window.speechSynthesis.speak(utterance);
             } catch (e) {
-                console.error("Web Speech Fatal Error:", e);
                 onComplete();
             }
         };
 
+        // FORCE CLOUD TTS - "Gemini Live Style"
         const playBackendTTS = async () => {
             console.log(`[VoiceManager] Fetching Cloud TTS for ${stateRef.current.language}`);
             try {
@@ -263,49 +249,19 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
 
                 audio.onerror = (e) => {
                     console.error("Cloud TTS Playback Error", e);
-                    attemptWebSpeech(); // Last resort
+                    attemptWebSpeech();
                 };
 
                 await audio.play();
             } catch (err) {
                 console.error("Cloud TTS Fetch Error:", err);
-                attemptWebSpeech(); // Last resort
+                attemptWebSpeech();
             }
         };
 
-        if (Capacitor.isNativePlatform()) {
-            try {
-                // 1. Check if Native supports this specific locale
-                const voices = await TextToSpeech.getSupportedLanguages();
-                const targetLang = stateRef.current.language;
-                // Loose match
-                const isSupported = voices.languages.some(l =>
-                    l.toLowerCase().includes(targetLang.split('-')[0].toLowerCase())
-                );
+        // Trigger Cloud TTS Immediately
+        playBackendTTS();
 
-                if (!isSupported) {
-                    console.warn(`[VoiceManager] Native TTS missing ${targetLang}. Using Cloud TTS.`);
-                    playBackendTTS();
-                    return;
-                }
-
-                console.log(`[VoiceManager] Attempting Native TTS: ${targetLang}`);
-                await TextToSpeech.speak({
-                    text,
-                    lang: targetLang,
-                    rate: 1.0,
-                    pitch: 1.0,
-                    category: 'ambient',
-                });
-                onComplete();
-
-            } catch (nativeErr) {
-                console.warn("Native TTS failed, switching to Cloud TTS", nativeErr);
-                playBackendTTS();
-            }
-        } else {
-            attemptWebSpeech();
-        }
     }, [startListening]);
 
     useEffect(() => {
