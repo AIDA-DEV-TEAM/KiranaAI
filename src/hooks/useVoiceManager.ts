@@ -97,7 +97,7 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
                 }, 8000);
 
                 await SpeechRecognition.start({
-                    language: stateRef.current.language || 'en-IN',
+                    language: stateRef.current.language || 'en-US',
                     partialResults: true,
                     popup: false,
                 });
@@ -198,6 +198,13 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
                 }
             }).then(handle => {
                 listenerHandle = handle;
+            });
+
+            // Handle errors (No match, network, etc.)
+            SpeechRecognition.addListener('onError' as any, (err: any) => {
+                console.error("Speech Recognition Error:", err);
+                // If error occurs, revert to IDLE to allow retry
+                setVoiceState(VoiceState.IDLE);
             });
 
             return () => {
