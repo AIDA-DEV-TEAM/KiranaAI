@@ -7,7 +7,9 @@ import StorekeeperView from './components/StorekeeperView';
 import StockManager from './components/StockManager';
 import ContactUs from './components/ContactUs';
 import SettingsView from './components/SettingsView';
+import SalesHistory from './components/SalesHistory';
 import ErrorBoundary from './components/ErrorBoundary';
+import { AppDataProvider } from './context/AppDataContext';
 
 import { App as CapacitorApp } from '@capacitor/app';
 import { useNavigate } from 'react-router-dom';
@@ -66,19 +68,22 @@ function App() {
 
   return (
     <Router>
-      <DeepLinkHandler />
-      <ErrorBoundary>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<ChatInterface messages={messages} setMessages={setMessages} />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/storekeeper" element={<StorekeeperView />} />
-            <Route path="/stock" element={<StockManager />} />
-            <Route path="/settings" element={<SettingsView />} />
-            <Route path="/contact" element={<ContactUs />} />
-          </Routes>
-        </Layout>
-      </ErrorBoundary>
+      <AppDataProvider>
+        <DeepLinkHandler />
+        <ErrorBoundary>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<ChatInterface messages={messages} setMessages={setMessages} />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/storekeeper" element={<StorekeeperView />} />
+              <Route path="/stock" element={<StockManager />} />
+              <Route path="/settings" element={<SettingsView />} />
+              <Route path="/contact" element={<ContactUs />} />
+              <Route path="/sales" element={<SalesHistory />} />
+            </Routes>
+          </Layout>
+        </ErrorBoundary>
+      </AppDataProvider>
     </Router>
   );
 }

@@ -1,31 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { Package, TrendingUp, AlertTriangle, ArrowUpRight, ArrowDownRight, Clock, Database, Loader2 } from 'lucide-react';
-import { getInventory, getSales } from '../services/api';
+import React from 'react';
+import { Package, TrendingUp, AlertTriangle, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
+import { useAppData } from '../context/AppDataContext';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
     const { t } = useTranslation();
-    const [inventory, setInventory] = useState([]);
-    const [sales, setSales] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [seeding, setSeeding] = useState(false);
+    const { inventory, salesData: sales, loadingInventory, loadingSales } = useAppData();
+    const navigate = useNavigate();
 
-    const fetchData = async () => {
-        try {
-            const [invData, salesData] = await Promise.all([getInventory(), getSales()]);
-            setInventory(invData);
-            setSales(salesData);
-        } catch (error) {
-            console.error("Failed to fetch data", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchData();
-    }, []);
+    const loading = loadingInventory || loadingSales;
 
     if (loading) {
         return (
@@ -109,7 +94,12 @@ const Dashboard = () => {
             <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
                 <div className="p-6 border-b border-border flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-foreground">{t('recent_sales')}</h3>
-                    <button className="text-sm text-primary font-medium hover:underline">{t('view_all')}</button>
+                    <button
+                        onClick={() => navigate('/sales')}
+                        className="text-sm text-primary font-medium hover:underline"
+                    >
+                        {t('view_all')}
+                    </button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">

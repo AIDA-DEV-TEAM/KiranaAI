@@ -35,8 +35,9 @@ import {
     Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { getInventory, addProduct, updateProduct, getMandiPrices } from '../services/api';
+import { addProduct, updateProduct } from '../services/api';
 import { useTranslation } from 'react-i18next';
+import { useAppData } from '../context/AppDataContext';
 
 const ICONS = [
     { name: 'package', icon: Package, label: 'General' },
@@ -64,9 +65,9 @@ const StorekeeperView = () => {
     const [activeTab, setActiveTab] = useState('catalog');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
+    const { inventory, mandiPrices, loadingInventory, loadingMandi, refreshInventory, addToCart } = useAppData();
     const [products, setProducts] = useState([]);
     const [marketPrices, setMarketPrices] = useState([]);
-    const [loading, setLoading] = useState(true);
     const { t, i18n } = useTranslation();
 
     // Modal State
@@ -84,30 +85,14 @@ const StorekeeperView = () => {
     });
     const [submitting, setSubmitting] = useState(false);
 
-    const fetchProducts = async () => {
-        setLoading(true);
-        try {
-            // Fetch inventory first for faster load
-            const inventoryData = await getInventory();
-            setProducts(inventoryData);
-            setLoading(false); // Stop loading indicator for main view
-
-            // Fetch market prices in background
-            try {
-                const mandiData = await getMandiPrices();
-                setMarketPrices(mandiData.prices || []);
-            } catch (err) {
-                console.error("Failed to fetch mandi prices", err);
-            }
-        } catch (error) {
-            console.error("Failed to fetch inventory", error);
-            setLoading(false);
-        }
-    };
+    // Sync local state with context data
+    useEffect(() => {
+        setProducts(inventory);
+    }, [inventory]);
 
     useEffect(() => {
-        fetchProducts();
-    }, []);
+        setMarketPrices(mandiPrices);
+    }, [mandiPrices]);
 
     const handleAddClick = () => {
         setEditingProduct(null);
@@ -139,15 +124,7 @@ const StorekeeperView = () => {
         setIsModalOpen(true);
     };
 
-    const handleQuickAdd = async (product) => {
-        try {
-            await updateProduct(product.id, { stock: product.stock + 1 });
-            // Optimistic update
-            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock + 1 } : p));
-        } catch (error) {
-            console.error("Failed to quick add", error);
-        }
-    };
+
 
 
 
@@ -168,7 +145,7 @@ const StorekeeperView = () => {
                 await addProduct(payload);
             }
 
-            await fetchProducts();
+            await refreshInventory(true); // Force refresh context
             setIsModalOpen(false);
         } catch (error) {
             console.error("Failed to save product", error);
@@ -188,8 +165,8 @@ const StorekeeperView = () => {
     return (
         <div className="flex flex-col h-full bg-background relative font-sans">
             {/* Top Navigation Tabs */}
-            <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b border-border">
-                <div className="px-2 py-1">
+            <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b border-border pb-2">
+                <div className="px-4 py-3">
                     <div className="flex items-center justify-between mb-2">
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('store_management')}</h1>
                         <button
@@ -212,7 +189,7 @@ const StorekeeperView = () => {
                                         : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
-                                {tab === 'shortfall' ? t('alerts') : t(tab)}
+                                {tab === 'shortfall' ? t('reorder') || "Reorder" : t(tab)}
                             </button>
                         ))}
                     </div>
@@ -259,7 +236,7 @@ const StorekeeperView = () => {
                         </div>
 
                         {/* Product Grid */}
-                        {loading ? (
+                        {loadingInventory ? (
                             <div className="flex justify-center py-12">
                                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
                             </div>
@@ -292,13 +269,6 @@ const StorekeeperView = () => {
                                         </div>
                                         <div className="flex flex-col gap-2">
                                             <button
-                                                onClick={() => handleQuickAdd(product)}
-                                                className="p-2.5 bg-green-500/10 text-green-600 rounded-xl hover:bg-green-500/20 transition-colors active:scale-95"
-                                                title={t('quick_add')}
-                                            >
-                                                <Plus size={20} />
-                                            </button>
-                                            <button
                                                 onClick={() => handleEditClick(product)}
                                                 className="p-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors active:scale-95"
                                             >
@@ -308,7 +278,7 @@ const StorekeeperView = () => {
                                     </div>
                                 )) : (
                                     <div className="text-center py-12 text-muted-foreground">
-                                        {t('no_sales')}
+                                        {t('no_stock_found') || "No Stock Found"}
                                     </div>
                                 )}
                             </div>
@@ -342,7 +312,10 @@ const StorekeeperView = () => {
                                                     <p className="text-red-500 font-medium">Shortfall: {shortfall}</p>
                                                 </div>
                                             </div>
-                                            <button className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-xl shadow-sm shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all">
+                                            <button
+                                                onClick={() => handleEditClick(item)}
+                                                className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-xl shadow-sm shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all"
+                                            >
                                                 {t('restock')}
                                             </button>
                                         </div>
@@ -419,7 +392,7 @@ const StorekeeperView = () => {
                                     )) : (
                                         <tr>
                                             <td colSpan="4" className="px-4 py-8 text-center text-muted-foreground">
-                                                {loading ? <Loader2 className="animate-spin mx-auto" /> : "No market data available"}
+                                                {loadingMandi ? <Loader2 className="animate-spin mx-auto" /> : "No market data available"}
                                             </td>
                                         </tr>
                                     )}

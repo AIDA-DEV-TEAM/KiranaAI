@@ -8,7 +8,6 @@ import { chatWithData, sendVoiceMessage } from '../services/api';
 import { cn } from '../lib/utils';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Capacitor } from '@capacitor/core';
-import ThemeToggle from './ThemeToggle';
 
 import { useTranslation } from 'react-i18next';
 
@@ -255,7 +254,6 @@ const ChatInterface = ({ messages, setMessages }) => {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <ThemeToggle />
                     <button
                         onClick={() => setIsLiveMode(true)}
                         className="p-2.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors active:scale-95"

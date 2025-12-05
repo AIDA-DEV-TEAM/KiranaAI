@@ -3,8 +3,12 @@ import { Camera as CameraIcon, Upload, CheckCircle, AlertCircle, Loader2, ScanLi
 import { uploadVisionImage, importInventory, updateShelfLocations } from '../services/api';
 import { cn } from '../lib/utils';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { useTranslation } from 'react-i18next';
+import { useAppData } from '../context/AppDataContext';
 
 const StockManager = () => {
+    const { t } = useTranslation();
+    const { refreshInventory } = useAppData();
     const [ocrResult, setOcrResult] = useState(null);
     const [shelfResult, setShelfResult] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -45,7 +49,7 @@ const StockManager = () => {
                     }
                 } catch (err) {
                     console.error("Vision API Error:", err);
-                    setError("Failed to process image. Please try again.");
+                    setError(t('failed_process_image') || "Failed to process image. Please try again.");
                 } finally {
                     setLoading(false);
                 }
@@ -54,8 +58,8 @@ const StockManager = () => {
             console.error("Camera Error:", error);
             // Don't show error if user cancelled
             if (error.message !== 'User cancelled photos app') {
-                alert(`Camera Error: ${error.message}`);
-                setError("Failed to open camera.");
+                alert(`${t('camera_error')}: ${error.message}`);
+                setError(t('failed_open_camera') || "Failed to open camera.");
             }
         }
     };
@@ -76,11 +80,12 @@ const StockManager = () => {
             }));
 
             await importInventory(productsToUpdate);
-            alert("Inventory updated successfully!");
+            await refreshInventory(true); // Force refresh context
+            alert(t('inventory_updated_success') || "Inventory updated successfully!");
             setOcrResult(null);
         } catch (error) {
             console.error("Failed to update inventory", error);
-            setError("Failed to update inventory. Please try again.");
+            setError(t('failed_update_inventory') || "Failed to update inventory. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -89,7 +94,7 @@ const StockManager = () => {
     return (
         <div className="p-4 space-y-6 pb-safe-nav">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Stock Management</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">{t('stock_management')}</h1>
             </div>
 
             {/* Bill OCR Section */}
@@ -99,8 +104,8 @@ const StockManager = () => {
                         <FileText size={24} />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold text-foreground">Scan Bill of Lading</h2>
-                        <p className="text-sm text-muted-foreground">Upload a photo of the distributor's bill to automatically update inventory.</p>
+                        <h2 className="text-lg font-semibold text-foreground">{t('scan_bill')}</h2>
+                        <p className="text-sm text-muted-foreground">{t('scan_bill_desc') || "Upload a photo of the distributor's bill to automatically update inventory."}</p>
                     </div>
                 </div>
 
@@ -111,7 +116,7 @@ const StockManager = () => {
                             className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-primary/30 rounded-2xl hover:bg-primary/5 bg-primary/5 cursor-pointer w-full transition-all active:scale-95"
                         >
                             <CameraIcon className="w-8 h-8 text-primary mb-2" />
-                            <p className="text-sm text-primary font-medium">Take Photo</p>
+                            <p className="text-sm text-primary font-medium">{t('take_photo')}</p>
                         </button>
                     </div>
 
@@ -121,7 +126,7 @@ const StockManager = () => {
                             className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95"
                         >
                             <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">Upload File</p>
+                            <p className="text-sm text-muted-foreground">{t('upload_file')}</p>
                         </button>
                     </div>
                 </div>
@@ -129,13 +134,13 @@ const StockManager = () => {
                 {ocrResult && (
                     <div className="mt-6 bg-green-500/10 p-5 rounded-2xl border border-green-500/20 animate-in fade-in slide-in-from-bottom-2">
                         <h3 className="font-bold text-green-700 dark:text-green-400 mb-3 flex items-center gap-2">
-                            <CheckCircle size={18} /> Extracted Items
+                            <CheckCircle size={18} /> {t('extracted_items')}
                         </h3>
                         <ul className="space-y-2 mb-4">
                             {ocrResult.map((item, idx) => (
                                 <li key={idx} className="flex justify-between text-sm p-2 bg-white/50 dark:bg-black/20 rounded-lg">
                                     <span className="font-medium text-foreground">{item.name}</span>
-                                    <span className="font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">Qty: {item.quantity}</span>
+                                    <span className="font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">{t('qty')}: {item.quantity}</span>
                                 </li>
                             ))}
                         </ul>
@@ -144,7 +149,7 @@ const StockManager = () => {
                             className="w-full bg-green-600 text-white py-3 rounded-xl font-medium shadow-lg shadow-green-600/20 hover:bg-green-700 active:scale-95 transition-all flex items-center justify-center gap-2"
                         >
                             {loading ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />}
-                            Confirm & Update Inventory
+                            {t('confirm_update')}
                         </button>
                     </div>
                 )}
@@ -157,8 +162,8 @@ const StockManager = () => {
                         <ScanLine size={24} />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold text-foreground">Shelf Analysis</h2>
-                        <p className="text-sm text-muted-foreground">Take a picture of the shelf to update product locations.</p>
+                        <h2 className="text-lg font-semibold text-foreground">{t('shelf_analysis')}</h2>
+                        <p className="text-sm text-muted-foreground">{t('shelf_analysis_desc') || "Take a picture of the shelf to update product locations."}</p>
                     </div>
                 </div>
 
@@ -169,7 +174,7 @@ const StockManager = () => {
                             className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-purple-500/30 rounded-2xl hover:bg-purple-500/5 bg-purple-500/5 cursor-pointer w-full transition-all active:scale-95"
                         >
                             <CameraIcon className="w-8 h-8 text-purple-600 mb-2" />
-                            <p className="text-sm text-purple-600 font-medium">Take Photo</p>
+                            <p className="text-sm text-purple-600 font-medium">{t('take_photo')}</p>
                         </button>
                     </div>
 
@@ -179,7 +184,7 @@ const StockManager = () => {
                             className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-2xl hover:bg-muted cursor-pointer w-full transition-all active:scale-95"
                         >
                             <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">Upload File</p>
+                            <p className="text-sm text-muted-foreground">{t('upload_file')}</p>
                         </button>
                     </div>
                 </div>
@@ -187,7 +192,7 @@ const StockManager = () => {
                 {shelfResult && (
                     <div className="mt-6 bg-purple-500/10 p-5 rounded-2xl border border-purple-500/20 animate-in fade-in slide-in-from-bottom-2">
                         <h3 className="font-bold text-purple-700 dark:text-purple-400 mb-3 flex items-center gap-2">
-                            <CheckCircle size={18} /> Identified Locations
+                            <CheckCircle size={18} /> {t('identified_locations')}
                         </h3>
                         <ul className="space-y-2 mb-4">
                             {shelfResult.map((item, idx) => (
@@ -203,11 +208,12 @@ const StockManager = () => {
                                 setLoading(true);
                                 try {
                                     await updateShelfLocations(shelfResult);
-                                    alert("Shelf locations updated successfully!");
+                                    await refreshInventory(true); // Force refresh context
+                                    alert(t('shelf_updated_success') || "Shelf locations updated successfully!");
                                     setShelfResult(null);
                                 } catch (error) {
                                     console.error("Failed to update shelf locations", error);
-                                    setError("Failed to update shelf locations.");
+                                    setError(t('failed_update_shelf') || "Failed to update shelf locations.");
                                 } finally {
                                     setLoading(false);
                                 }
@@ -215,7 +221,7 @@ const StockManager = () => {
                             className="w-full bg-purple-600 text-white py-3 rounded-xl font-medium shadow-lg shadow-purple-600/20 hover:bg-purple-700 active:scale-95 transition-all flex items-center justify-center gap-2"
                         >
                             {loading ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />}
-                            Update Shelf Locations
+                            {t('update_locations')}
                         </button>
                     </div>
                 )}
@@ -225,7 +231,7 @@ const StockManager = () => {
                 <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in">
                     <div className="bg-card p-8 rounded-3xl shadow-2xl border border-border flex flex-col items-center gap-4">
                         <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                        <p className="text-lg font-medium text-foreground">Processing Image...</p>
+                        <p className="text-lg font-medium text-foreground">{t('processing_image') || "Processing Image..."}</p>
                     </div>
                 </div>
             )}
