@@ -43,6 +43,7 @@ const ChatInterface = ({ messages, setMessages }) => {
         voiceState,
         transcript,
         isSpeaking,
+        isStarting,
         startListening,
         stopListening,
         speakResponse,
@@ -237,7 +238,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                                     "relative z-10 w-24 h-24 rounded-full flex items-center justify-center transition-transform duration-500 bg-background/50 backdrop-blur-sm border border-white/10 outline-none",
                                     voiceState === VoiceState.LISTENING ? "scale-110" : "scale-100 cursor-pointer hover:scale-105"
                                 )}>
-                                {(voiceState === VoiceState.PROCESSING || isLoading) ? (
+                                {(voiceState === VoiceState.PROCESSING || isLoading || isStarting) ? (
                                     <Loader2 size={48} className="text-primary animate-spin" />
                                 ) : voiceState === VoiceState.SPEAKING ? (
                                     <Volume2 size={48} className="text-green-500 animate-pulse" />

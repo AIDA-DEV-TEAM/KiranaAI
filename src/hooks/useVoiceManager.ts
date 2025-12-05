@@ -19,6 +19,7 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
     const [voiceState, setVoiceState] = useState<VoiceState>(VoiceState.IDLE);
     const [transcript, setTranscript] = useState<string>('');
     const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+    const [isStarting, setIsStarting] = useState<boolean>(false);
 
     const silenceTimer = useRef<any>(null);
     const processTimer = useRef<any>(null);
@@ -73,8 +74,8 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
         clearTimers();
         setTranscript('');
 
-        // Optimistic update: Show "Listening" immediately to prevent UI flicker
-        setVoiceState(VoiceState.LISTENING);
+        // Optimistic update removed - using isStarting
+        setIsStarting(true);
 
         if (Capacitor.isNativePlatform()) {
             try {
@@ -96,6 +97,8 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
                     stopListening();
                 }, 8000);
 
+                setVoiceState(VoiceState.LISTENING);
+
                 await SpeechRecognition.start({
                     language: stateRef.current.language || 'en-US',
                     partialResults: true,
@@ -104,11 +107,15 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
 
             } catch (e) {
                 console.error("Start listening failed:", e);
+                // Revert to IDLE so user can tap to retry
                 setVoiceState(VoiceState.IDLE);
+            } finally {
+                setIsStarting(false);
             }
         } else {
             console.warn("Web Speech API not fully implemented in this native-focused hook");
             setVoiceState(VoiceState.IDLE);
+            setIsStarting(false);
         }
     }, [stopListening]);
 
@@ -220,6 +227,7 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
         voiceState,
         transcript,
         isSpeaking,
+        isStarting,
         startListening,
         stopListening,
         speakResponse,
