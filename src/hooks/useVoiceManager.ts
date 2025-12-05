@@ -247,20 +247,31 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
 
         if (Capacitor.isNativePlatform()) {
             try {
-                console.log(`[VoiceManager] Attempting Native TTS with locale: ${stateRef.current.language}`);
-                const ttsPromise = TextToSpeech.speak({
+                // 1. Check if the specific Indian locale is supported (e.g., 'ta-IN')
+                const voices = await TextToSpeech.getSupportedLanguages();
+                const targetLang = stateRef.current.language;
+
+                // Note: voices.languages is an array of strings like ['en-US', 'hi-IN', ...]
+                const isSupported = voices.languages.some(l => l.replace('_', '-') === targetLang.replace('_', '-'));
+
+                if (!isSupported) {
+                    console.warn(`[VoiceManager] Native TTS does not support ${targetLang}. Falling back to Web.`);
+                    attemptWebSpeech();
+                    return;
+                }
+
+                console.log(`[VoiceManager] Attempting Native TTS with locale: ${targetLang}`);
+
+                // 2. Speak without arbitrary timeout race (we rely on the global safeguard)
+                await TextToSpeech.speak({
                     text,
-                    lang: stateRef.current.language,
+                    lang: targetLang,
                     rate: 1.0,
                     pitch: 1.0,
                     category: 'ambient',
                 });
 
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error("Native TTS Timed out")), 3500)
-                );
-
-                await Promise.race([ttsPromise, timeoutPromise]);
+                // 3. Success
                 onComplete();
 
             } catch (nativeErr) {
