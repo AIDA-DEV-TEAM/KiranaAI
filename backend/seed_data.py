@@ -4,7 +4,7 @@ def seed_default_data():
     db = database.SessionLocal()
     try:
         # Check if products exist
-        if db.query(models.Product).count() == 0:
+        if db.query(database.Product).count() == 0:
             print("Seeding default data...")
             default_products = [
                 {"name": "Sona Masoori Rice", "category": "Grains", "price": 55.0, "stock": 100, "max_stock": 200, "shelf_position": "A1", "icon_name": "wheat"},
@@ -28,7 +28,7 @@ def seed_default_data():
             ]
             
             for p in default_products:
-                db_product = models.Product(**p)
+                db_product = database.Product(**p)
                 db.add(db_product)
             
             db.commit()
