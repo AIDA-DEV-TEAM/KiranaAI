@@ -133,6 +133,12 @@ const StorekeeperView = () => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            if (parseInt(formData.stock) > parseInt(formData.max_stock)) {
+                alert(t('stock_exceeds_max') || "Stock cannot exceed Max Stock!");
+                setSubmitting(false);
+                return;
+            }
+
             const payload = {
                 ...formData,
                 price: parseFloat(formData.price),

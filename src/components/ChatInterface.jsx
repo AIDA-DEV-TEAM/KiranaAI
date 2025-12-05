@@ -64,9 +64,14 @@ const ChatInterface = ({ messages, setMessages }) => {
         const currentMessages = stateRef.current ? stateRef.current.messages : messages;
         const currentLang = stateRef.current ? stateRef.current.i18n.language : i18n.language;
 
-        if (!currentInput.trim()) return;
+        if (currentInput.trim() === '') return;
 
-        if (isListening) stopListening();
+        try {
+            if (isListening) await stopListening();
+        } catch (e) {
+            console.error("Error stopping listener:", e);
+        }
+
         if (isSpeaking) {
             audioRef.current.pause();
             setIsSpeaking(false);
@@ -94,7 +99,8 @@ const ChatInterface = ({ messages, setMessages }) => {
 
             // Only speak if source is voice or live mode is active
             if (source === 'voice' || isLiveMode) {
-                playTTS(responseText, isLiveMode);
+                // Ensure we pass the FRESH logic for auto-restart
+                playTTS(responseText, true);
             }
 
         } catch (error) {
