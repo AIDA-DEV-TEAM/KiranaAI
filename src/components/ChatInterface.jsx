@@ -203,7 +203,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                             <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
                                 {voiceState === VoiceState.PROCESSING || isLoading ? t('thinking') :
                                     voiceState === VoiceState.SPEAKING ? t('speaking') :
-                                        voiceState === VoiceState.LISTENING ? t('listening') : t('online')}
+                                        voiceState === VoiceState.LISTENING ? t('listening') : t('tap_to_resume') || "Tap to Resume"}
                             </h2>
                             {/* Show live transcript or response preview */}
                             <p className="text-muted-foreground text-lg max-w-md mx-auto line-clamp-3">
@@ -228,18 +228,23 @@ const ChatInterface = ({ messages, setMessages }) => {
                                 voiceState === VoiceState.LISTENING ? "border-primary animate-ping-slow" : "border-muted-foreground scale-90"
                             )} />
 
-                            <div className={cn(
-                                "relative z-10 w-24 h-24 rounded-full flex items-center justify-center transition-transform duration-500 bg-background/50 backdrop-blur-sm border border-white/10",
-                                voiceState === VoiceState.LISTENING ? "scale-110" : "scale-100"
-                            )}>
+                            <button
+                                onClick={() => {
+                                    if (voiceState === VoiceState.IDLE) startListening();
+                                }}
+                                disabled={voiceState !== VoiceState.IDLE}
+                                className={cn(
+                                    "relative z-10 w-24 h-24 rounded-full flex items-center justify-center transition-transform duration-500 bg-background/50 backdrop-blur-sm border border-white/10 outline-none",
+                                    voiceState === VoiceState.LISTENING ? "scale-110" : "scale-100 cursor-pointer hover:scale-105"
+                                )}>
                                 {(voiceState === VoiceState.PROCESSING || isLoading) ? (
                                     <Loader2 size={48} className="text-primary animate-spin" />
                                 ) : voiceState === VoiceState.SPEAKING ? (
                                     <Volume2 size={48} className="text-green-500 animate-pulse" />
                                 ) : (
-                                    <Mic size={48} className={cn("text-foreground", isListening && "text-primary")} />
+                                    <Mic size={48} className={cn("text-foreground", isListening ? "text-primary" : "text-muted-foreground")} />
                                 )}
-                            </div>
+                            </button>
                         </div>
                     </div>
 
@@ -373,26 +378,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                         <Send size={20} />
                     </button>
 
-                    {!isLiveMode && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (voiceState === VoiceState.LISTENING) {
-                                    stopListening();
-                                } else {
-                                    startListening();
-                                }
-                            }}
-                            className={cn(
-                                "p-3.5 rounded-2xl transition-all shadow-sm active:scale-95",
-                                voiceState === VoiceState.LISTENING
-                                    ? "bg-red-500 text-white animate-pulse"
-                                    : "bg-muted text-foreground hover:bg-muted/80"
-                            )}
-                        >
-                            <Mic size={20} />
-                        </button>
-                    )}
+
                 </form>
             </div>
         </div>
