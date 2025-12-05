@@ -39,7 +39,8 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
         try {
             const perm = await SpeechRecognition.checkPermissions();
             if (perm.speechRecognition !== 'granted') {
-                await SpeechRecognition.requestPermissions();
+                const result = await SpeechRecognition.requestPermissions();
+                return result.speechRecognition === 'granted';
             }
             return true;
         } catch (e) {
@@ -72,18 +73,22 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
         clearTimers();
         setTranscript('');
 
-        if (Capacitor.isNativePlatform()) {
-            const hasPerm = await checkPermissions();
-            if (!hasPerm) {
-                setVoiceState(VoiceState.IDLE);
-                return;
-            }
+        // Optimistic update: Show "Listening" immediately to prevent UI flicker
+        setVoiceState(VoiceState.LISTENING);
 
+        if (Capacitor.isNativePlatform()) {
             try {
+                const hasPerm = await checkPermissions();
+                if (!hasPerm) {
+                    console.error("Permissions denied");
+                    setVoiceState(VoiceState.IDLE);
+                    return;
+                }
+
                 // Ensure fresh start
                 try { await SpeechRecognition.stop(); } catch (e) { }
-
-                setVoiceState(VoiceState.LISTENING);
+                // CRITICAL: Robust delay (250ms) to allow native layer to reset
+                await new Promise(resolve => setTimeout(resolve, 250));
 
                 // Safety timeout: If no input at all for 8 seconds, go IDLE
                 silenceTimer.current = setTimeout(() => {
@@ -92,7 +97,7 @@ export const useVoiceManager = ({ language = 'en-US', onInputComplete }: UseVoic
                 }, 8000);
 
                 await SpeechRecognition.start({
-                    language: stateRef.current.language,
+                    language: stateRef.current.language || 'en-IN',
                     partialResults: true,
                     popup: false,
                 });
