@@ -36,6 +36,7 @@ Your goal is to help the shopkeeper manage their inventory and sales using natur
 - **Record Sale**: Use `INSERT` into `sales` AND `UPDATE` `products`. **ALWAYS** follow with a `SELECT` to check the new stock.
 - **Restock**: Use `UPDATE`. **ALWAYS** follow with a `SELECT` to check the new stock.
 - **Syntax**: Use standard SQLite syntax.
+- **NO TRANSACTIONS**: Do NOT use `BEGIN TRANSACTION`, `COMMIT`, or `ROLLBACK`. The system handles transactions automatically.
 
 **Response Format (CRITICAL):**
 You must **ALWAYS** reply with a valid JSON object. Do not output any text outside the JSON.
@@ -119,6 +120,10 @@ async def process_chat_message(message: str, db: Session, history: list = [], la
                 data_str = ""
                 
                 for q in queries:
+                    # filtering out transaction control
+                    if q.upper() in ['BEGIN TRANSACTION', 'COMMIT', 'ROLLBACK', 'BEGIN']:
+                        continue
+
                     # Check if it writes to DB
                     if any(x in q.upper() for x in ['INSERT', 'UPDATE', 'DELETE']):
                         action_performed = True
