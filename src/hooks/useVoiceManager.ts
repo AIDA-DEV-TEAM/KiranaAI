@@ -318,6 +318,16 @@ export const useVoiceManager = ({
             }
 
             console.log(`[VoiceManager] Fetching Cloud TTS for ${stateRef.current.language}`);
+
+            // Safety timeout - if TTS doesn't complete in reasonable time, force completion
+            // Estimate: ~150 words per minute speech rate = ~2.5 words per second
+            // Add 10s buffer for network/processing
+            const estimatedDuration = (text.split(' ').length / 2.5) * 1000 + 10000;
+            const safetyTimeout = setTimeout(() => {
+                console.warn("[VoiceManager] TTS safety timeout triggered - forcing completion");
+                onComplete();
+            }, Math.max(estimatedDuration, 30000)); // Minimum 30s timeout
+
             try {
                 const audioDataUrl = await getTTS(text, stateRef.current.language);
 
@@ -327,11 +337,13 @@ export const useVoiceManager = ({
 
                 audio.onended = () => {
                     console.log("[VoiceManager] Cloud TTS Finished");
+                    clearTimeout(safetyTimeout);
                     onComplete();
                 };
 
                 audio.onerror = (e) => {
                     console.error("[VoiceManager] Cloud TTS Playback Error", e);
+                    clearTimeout(safetyTimeout);
                     attemptDeviceTTS();
                 };
 
@@ -340,10 +352,12 @@ export const useVoiceManager = ({
                     console.log("[VoiceManager] Cloud TTS playing");
                 } catch (playErr) {
                     console.error("[VoiceManager] Audio Playback Blocked/Failed:", playErr);
+                    clearTimeout(safetyTimeout);
                     attemptDeviceTTS();
                 }
             } catch (err) {
                 console.error("[VoiceManager] Cloud TTS Fetch Error:", err);
+                clearTimeout(safetyTimeout);
                 attemptDeviceTTS();
             }
         };

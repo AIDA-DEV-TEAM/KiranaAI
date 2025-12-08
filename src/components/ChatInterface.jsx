@@ -116,6 +116,9 @@ const ChatInterface = ({ messages, setMessages }) => {
                 sql: data.sql_query
             }]);
 
+            // CRITICAL: Set loading to false BEFORE speaking to avoid UI conflicts
+            setIsLoading(false);
+
             // If source was voice or we are in live mode, speak the response
             if (source === 'voice' || isLiveMode) {
                 // Optimize text for speech
@@ -148,7 +151,10 @@ const ChatInterface = ({ messages, setMessages }) => {
                 speakResponse(t('error_processing_request'));
             }
         } finally {
-            setIsLoading(false);
+            // Only set loading false if NOT in voice/live mode (already set above)
+            if (source !== 'voice' && !isLiveMode) {
+                setIsLoading(false);
+            }
         }
     };
 
