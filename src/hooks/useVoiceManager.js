@@ -216,11 +216,12 @@ export const useVoiceManager = (currentLanguage = 'en') => {
 
                         // Force process after 3 seconds regardless of silence detection
                         forceProcessTimerRef.current = setTimeout(async () => {
-                            console.log('[VoiceManager] FORCE PROCESSING after 3s:', interimText);
+                            const textToProcess = lastTranscript; // Use ref variable, not closure variable
+                            console.log('[VoiceManager] FORCE PROCESSING after 3s:', textToProcess);
                             clearTimers();
                             await stopListening();
-                            if (interimText && interimText.trim().length > 3) {
-                                await processTranscript(interimText);
+                            if (textToProcess && textToProcess.trim().length > 3) {
+                                await processTranscript(textToProcess);
                             }
                         }, 3000); // Force process after 3 seconds
                     }
