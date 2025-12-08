@@ -20,9 +20,11 @@ export const useVoiceManager = (currentLanguage = 'en') => {
 
     const silenceTimerRef = useRef(null);
     const noSpeechTimerRef = useRef(null);
+    const forceProcessTimerRef = useRef(null); // Force process after max wait time
     const isListeningRef = useRef(false);
     const isSpeakingRef = useRef(false);
     const conversationHistoryRef = useRef([]);
+    const hasSetForceTimerRef = useRef(false); // Track if we've set the force timer
 
     // Get TTS language code based on current app language
     const getTTSLanguage = useCallback(() => {
@@ -39,6 +41,11 @@ export const useVoiceManager = (currentLanguage = 'en') => {
             clearTimeout(noSpeechTimerRef.current);
             noSpeechTimerRef.current = null;
         }
+        if (forceProcessTimerRef.current) {
+            clearTimeout(forceProcessTimerRef.current);
+            forceProcessTimerRef.current = null;
+        }
+        hasSetForceTimerRef.current = false;
     }, []);
 
     // Stop speech recognition
@@ -201,6 +208,22 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                     const interimText = data.matches[0];
                     lastTranscript = interimText;
                     setTranscript(interimText);
+
+                    // If we have meaningful text and haven't set force timer yet, set it
+                    if (interimText.trim().length > 3 && !hasSetForceTimerRef.current) {
+                        console.log('[VoiceManager] Setting force process timer for:', interimText);
+                        hasSetForceTimerRef.current = true;
+
+                        // Force process after 3 seconds regardless of silence detection
+                        forceProcessTimerRef.current = setTimeout(async () => {
+                            console.log('[VoiceManager] FORCE PROCESSING after 3s:', interimText);
+                            clearTimers();
+                            await stopListening();
+                            if (interimText && interimText.trim().length > 3) {
+                                await processTranscript(interimText);
+                            }
+                        }, 3000); // Force process after 3 seconds
+                    }
 
                     // Reset no-speech timer since we're getting input
                     if (noSpeechTimerRef.current) {
