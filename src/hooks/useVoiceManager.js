@@ -109,7 +109,9 @@ export const useVoiceManager = (currentLanguage = 'en') => {
     const speakResponse = useCallback(async (text) => {
         if (!text || text.trim() === '') {
             // If no response, restart listening
-            await startListening();
+            if (isActive) {
+                await startListening();
+            }
             return;
         }
 
@@ -186,10 +188,8 @@ export const useVoiceManager = (currentLanguage = 'en') => {
             // Set no-speech timeout
             noSpeechTimerRef.current = setTimeout(() => {
                 console.log('[VoiceManager] No-speech timeout triggered');
-                if (isListeningRef.current && voiceState === VOICE_STATES.LISTENING) {
-                    setError('No speech detected. Voice mode stopped.');
-                    stopVoiceMode();
-                }
+                setError('No speech detected. Voice mode stopped.');
+                setIsActive(false);
             }, NO_SPEECH_TIMEOUT_MS);
 
             let lastTranscript = '';
@@ -207,10 +207,8 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                         clearTimeout(noSpeechTimerRef.current);
                         noSpeechTimerRef.current = setTimeout(() => {
                             console.log('[VoiceManager] No-speech timeout after partial results');
-                            if (isListeningRef.current) {
-                                setError('No speech detected. Voice mode stopped.');
-                                stopVoiceMode();
-                            }
+                            setError('No speech detected. Voice mode stopped.');
+                            setIsActive(false);
                         }, NO_SPEECH_TIMEOUT_MS);
                     }
 
@@ -259,7 +257,7 @@ export const useVoiceManager = (currentLanguage = 'en') => {
             setVoiceState(VOICE_STATES.IDLE);
             setIsActive(false);
         }
-    }, [getTTSLanguage, voiceState, processTranscript, stopListening, clearTimers, stopVoiceMode]);
+    }, [getTTSLanguage, processTranscript, stopListening, clearTimers]);
 
     // Start voice mode
     const startVoiceMode = useCallback(async () => {
@@ -306,6 +304,22 @@ export const useVoiceManager = (currentLanguage = 'en') => {
             SpeechRecognition.removeAllListeners().catch(console.error);
         };
     }, [clearTimers]);
+
+    // Effect to cleanup when isActive becomes false
+    useEffect(() => {
+        if (!isActive) {
+            clearTimers();
+            if (isListeningRef.current) {
+                SpeechRecognition.stop().catch(console.error);
+                isListeningRef.current = false;
+            }
+            if (isSpeakingRef.current) {
+                TextToSpeech.stop().catch(console.error);
+                isSpeakingRef.current = false;
+            }
+            setVoiceState(VOICE_STATES.IDLE);
+        }
+    }, [isActive, clearTimers]);
 
     return {
         voiceState,
