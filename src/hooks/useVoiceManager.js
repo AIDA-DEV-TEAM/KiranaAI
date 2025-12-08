@@ -25,6 +25,7 @@ export const useVoiceManager = (currentLanguage = 'en') => {
     const isSpeakingRef = useRef(false);
     const conversationHistoryRef = useRef([]);
     const hasSetForceTimerRef = useRef(false); // Track if we've set the force timer
+    const isProcessingRef = useRef(false); // Prevent duplicate processing
 
     // Get TTS language code based on current app language
     const getTTSLanguage = useCallback(() => {
@@ -244,9 +245,15 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                                 noSpeechTimerRef.current = null;
                             }
 
-                            await stopListening();
+                            // Stop speech recognition (don't await - it can hang)
+                            try {
+                                SpeechRecognition.stop();
+                            } catch (err) {
+                                console.log('[VoiceManager] Error stopping recognition:', err);
+                            }
+
                             if (textToProcess && textToProcess.trim().length > 3) {
-                                console.log('[VoiceManager] Calling processTranscript with:', textToProcess);
+                                console.log('[VoiceManager] ABOUT TO CALL processTranscript with:', textToProcess);
                                 await processTranscript(textToProcess);
                             } else {
                                 console.log('[VoiceManager] ERROR: Text too short or empty:', textToProcess);
@@ -274,7 +281,12 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                         // Process the transcript after silence detected
                         // Only process if we have meaningful text (more than 3 characters)
                         if (interimText && interimText.trim().length > 3) {
-                            await stopListening();
+                            try {
+                                SpeechRecognition.stop();
+                            } catch (err) {
+                                console.log('[VoiceManager] Error stopping recognition:', err);
+                            }
+                            console.log('[VoiceManager] ABOUT TO CALL processTranscript from silence timer');
                             await processTranscript(interimText);
                         } else {
                             console.log('[VoiceManager] Transcript too short, ignoring:', interimText);
