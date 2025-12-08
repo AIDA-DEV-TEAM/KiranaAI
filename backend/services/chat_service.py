@@ -1,200 +1,174 @@
 import os
-import google.generativeai as genai
-from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
-from ..database import Product, Sale
-from datetime import datetime
-import logging
 import json
 import re
+import google.generativeai as genai
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from dotenv import load_dotenv
+import logging
+import traceback
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+load_dotenv()
+
+api_key = os.getenv("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
 
 SYSTEM_PROMPT = """
-You are KiranaAI, an expert Grocery Store Assistant.
-Your Goal: Help the store owner manage inventory, track sales, and optimize their business.
+You are a smart, friendly, and efficient Kirana (Grocery) Shop Assistant.
+Your goal is to help the shopkeeper manage their inventory and sales using natural language.
 
-You have access to REAL-TIME data.
-Context:
-{context}
+**Database Schema:**
+- `products` (id, name, category, price, stock, max_stock, shelf_position, image_url, icon_name)
+- `sales` (id, product_id, quantity, total_amount, timestamp)
 
-Guidelines:
-1. **Be Concise & Direct**.
-2. **Data-Driven**: Use provided context stats.
-3. **Actions**: If the user says they SOLD something (e.g., "Sold 20kg Rice", "Add sale 5 milk"), you MUST output a JSON block to record it.
-   
-   Format for SALES:
-   ```json
-   {{
-     "action": "RECORD_SALE",
-     "product_name": "exact or partial name from user",
-     "quantity": 20,
-     "unit": "kg/packets/etc"
-   }}
-   ```
-   
-   If NO action is needed, just give a plain text response.
-   
-   Example User: "Sold 5 Bread"
-   Example Output:
-   ```json
-   {{
-     "action": "RECORD_SALE",
-     "product_name": "Bread",
-     "quantity": 5,
-     "unit": "packets"
-   }}
-   ```
-   Thinking: Found 'Bread' in inventory. Recording sale...
-   Response: Recorded sale of 5 Bread. Stock updated.
+**Your Capabilities:**
+1.  **Answer Questions**: Provide helpful answers about the shop's data.
+2.  **Execute Actions**: Generate SQL to update stock or record sales.
+3.  **Be Conversational**: If the user says "Hi" or "Thanks", reply naturally.
 
-4. **Professional Tone**.
+**Rules for SQL Generation:**
+- **Read Data**: Use `SELECT`. Example: "How much rice?" -> `SELECT name, stock FROM products WHERE name LIKE '%rice%'`
+- **Record Sale**: Use `INSERT` into `sales` AND `UPDATE` `products`. **ALWAYS** follow with a `SELECT` to check the new stock.
+- **Restock**: Use `UPDATE`. **ALWAYS** follow with a `SELECT` to check the new stock.
+- **Syntax**: Use standard SQLite syntax.
+
+**Response Format (CRITICAL):**
+You must **ALWAYS** reply with a valid JSON object. Do not output any text outside the JSON.
+
+**Format 1: For General Answers**
+```json
+{
+  "type": "answer",
+  "content": "Your friendly natural language response here. **IMPORTANT**: If listing multiple items (products, sales, prices), YOU MUST USE A MARKDOWN TABLE."
+}
+```
+
+**Format 2: For Database Actions (read/write)**
+```json
+{
+  "type": "sql",
+  "content": "THE SQL QUERY HERE"
+}
+```
+
+**CRITICAL RULES:**
+1.  **Language**: The `content` field MUST be in the SAME language as the user's input (Hindi/Telugu/English).
+2.  **No Technical Terms**: The `content` for "answer" type must be simple and non-technical.
+3.  **Valid JSON**: Ensure the output is strictly valid JSON.
+4.  **Markdown Tables**: When showing lists of data (e.g., "Show all rice products", "List sales today"), format the output as a clean Markdown table.
 """
 
-async def process_chat_message(message: str, db: Session, history: list, language: str = "en") -> dict:
+# Using flash-latest as per existing configuration pattern
+model = genai.GenerativeModel('gemini-flash-latest', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
+
+async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en") -> dict:
+    if not api_key:
+        logger.error("Gemini API key not configured")
+        return {"response": "System Error: API Key missing.", "sql_query": None}
+
+    # Convert history to Gemini format
+    gemini_history = []
+    for msg in history:
+        role = "user" if msg.get("role") == "user" else "model"
+        gemini_history.append({"role": role, "parts": [msg.get("content")]})
+
+    chat_session = model.start_chat(history=gemini_history)
+    # Explicitly enforce language constraint in every turn
+    prompt = f"User: {message}\nLanguage: {language}\nRespond in {language}.\n"
+
     try:
-        # 1. Fetch Context
-        total_products = db.query(func.count(Product.id)).scalar() or 0
-        low_stock_items = db.query(Product).filter(Product.stock <= (Product.max_stock * 0.5)).limit(10).all()
-        today = datetime.now().date()
-        todays_sales = db.query(func.sum(Sale.total_amount)).filter(func.date(Sale.timestamp) == today).scalar() or 0.0
-        
-        search_terms = [w.strip() for w in message.split() if len(w.strip()) > 2]
-        relevant_products = []
-        if search_terms:
-            conditions = [Product.name.ilike(f"%{term}%") for term in search_terms]
-            if conditions:
-                relevant_products = db.query(Product).filter(or_(*conditions)).limit(5).all()
+        response = chat_session.send_message(prompt)
+        text_response = response.text.strip()
+        logger.info(f"AI Raw Response: {text_response}")
 
-        low_stock_context = ", ".join([f"{p.name} (Qty: {p.stock}/{p.max_stock})" for p in low_stock_items]) if low_stock_items else "None"
-        relevant_items_context = "None"
-        if relevant_products:
-            relevant_items_context = "\n".join([
-                f"- {p.name}: Stock {p.stock}/{p.max_stock}, Price ₹{p.price}"
-                for p in relevant_products
-            ])
-
-        context_str = f"""
-        [Stats] Date: {datetime.now().strftime("%Y-%m-%d")}, Products: {total_products}, Today's Sales: ₹{todays_sales}
-        [Low Stock] {low_stock_context}
-        [Relevant Products] {relevant_items_context}
-        """
-
-        messages = [{"role": "user", "parts": [SYSTEM_PROMPT.format(context=context_str)]}]
-        for msg in history:
-            role = "user" if msg['role'] == 'user' else "model"
-            messages.append({"role": role, "parts": [msg['content']]})
-        messages.append({"role": "user", "parts": [message]})
-
-        # 2. Call Gemini
-        model = genai.GenerativeModel('gemini-flash-latest')
-        response = model.generate_content(messages)
-        
-        ai_text = ""
         try:
-            ai_text = response.text
-        except ValueError:
-            ai_text = "Sorry, I couldn't process that. Please try again."
-
-        # 3. Action Parsing & Execution
-        sql_query = None
-        final_response = ai_text
-
-        # Helper to strip JSON for fallback
-        def strip_json(text):
-            # Remove code blocks with optional language identifier
-            clean = re.sub(r'```(?:json)?\s*\{.*?\}\s*```', '', text, flags=re.DOTALL | re.IGNORECASE)
-            # Remove inline JSON-like structures if any strict ones remain (fallback)
-            return clean.strip()
-
-        # Extract JSON if present
-        # We look for a code block first
-        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', ai_text, re.DOTALL | re.IGNORECASE)
-        
-        # Fallback regex if code block markers are missing but JSON structure exists
-        if not json_match:
-            json_match = re.search(r'(\{.*"action":\s*"RECORD_SALE".*\})', ai_text, re.DOTALL)
-
-        if json_match:
+            data = json.loads(text_response)
+        except json.JSONDecodeError:
+            # Fallback if model outputs markdown code block
+            clean_text = text_response.replace("```json", "").replace("```", "").strip()
             try:
-                action_data = json.loads(json_match.group(1))
-                if action_data.get("action") == "RECORD_SALE":
-                    # Execute Action
-                    p_name = action_data.get("product_name")
-                    qty = float(action_data.get("quantity", 0))
+                data = json.loads(clean_text)
+            except:
+                # Ultimate fallback: treat as answer
+                return {"response": text_response, "sql_query": None}
+
+        if data.get("type") == "answer":
+            return {"response": data.get("content"), "sql_query": None}
+
+        elif data.get("type") == "sql":
+            sql_query = data.get("content")
+            logger.info(f"Executing SQL: {sql_query}")
+            try:
+                # Clean up SQL
+                sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
+                # Handle multiple statements if any (though usually one block)
+                # We need to split properly if multiple queries are sent
+                queries = [q.strip() for q in sql_query.split(';') if q.strip()]
+                
+                data_str = ""
+                
+                for q in queries:
+                    result = db.execute(text(q))
+                    db.commit() # Commit changes for INSERT/UPDATE
                     
-                    # Find Product
-                    product = db.query(Product).filter(Product.name.ilike(f"%{p_name}%")).first()
-                    
-                    result_context = ""
-                    if product:
-                        if product.stock >= qty:
-                            # Update DB
-                            product.stock -= int(qty)
-                            total_amt = product.price * qty
-                            new_sale = Sale(product_id=product.id, quantity=int(qty), total_amount=total_amt)
-                            db.add(new_sale)
-                            db.commit()
-                            
-                            # Fetch updated stats
-                            today_str = datetime.now().date()
-                            prod_sales_today = db.query(func.sum(Sale.quantity)).filter(
-                                Sale.product_id == product.id, 
-                                func.date(Sale.timestamp) == today_str
-                            ).scalar() or 0
-                            
-                            warning = ""
-                            if product.stock <= (product.max_stock * 0.2):
-                                warning = "CRITICAL LOW STOCK!"
-                            
-                            result_context = f"""
-                            ACTION RESULT: SUCCESS
-                            - Product: {product.name}
-                            - Sold: {int(qty)} units
-                            - Revenue: ₹{total_amt}
-                            - Remaining Stock: {product.stock}
-                            - Sold Today: {int(prod_sales_today)} units
-                            - Warnings: {warning}
-                            """
+                    if result.returns_rows:
+                        rows = result.fetchall()
+                        if rows:
+                            # Convert rows to string representation for the AI
+                            # keys() returns column names
+                            cols = result.keys()
+                            for row in rows:
+                                row_dict = dict(zip(cols, row))
+                                data_str += str(row_dict) + "\n"
                         else:
-                            result_context = f"ACTION RESULT: FAILURE. Not enough stock. Requested: {int(qty)}, Available: {product.stock}"
+                            data_str += "Query executed successfully. No data returned.\n"
                     else:
-                        result_context = f"ACTION RESULT: FAILURE. Product '{p_name}' not found."
-                    
-                    # Ask AI to generate the final response
-                    response_prompt = f"""
-                    You performed a sales action. Here is the result:
-                    {result_context}
-                    
-                    Context: {message}
-                    Task: Generate a professional, concise confirmation message for the user in {language} language.
-                    Use emojis. If success, show Revenue and Stock Left clearly. 
-                    If critical low stock, warn the user.
-                    """
-                    
-                    resp_model = genai.GenerativeModel('gemini-flash-latest')
-                    final_response = resp_model.generate_content(response_prompt).text.strip()
+                        data_str += "Action executed successfully.\n"
+
+                # Feed result back to AI to generate natural language response
+                answer_prompt = f"""
+                SQL Execution Result:
+                {data_str}
+
+                Task:
+                1. Summarize this result for the user in a friendly way.
+                2. If it was a sale, confirm the sale, amount, and remaining stock.
+                   - Example: "Sold 2 milk. Remaining stock: 8"
+                3. If it was a query, show the data cleanly.
+                4. **CRITICAL**: Reply in the SAME language as the user's question ({language}).
+                5. **Formatting**: If the data retrieved contains multiple rows (more than 1), YOU MUST present it as a Markdown Table in your response.
+                6. **Output Format**: Return a JSON object: {{ "type": "answer", "content": "..." }}
+                """
+
+                final_response = chat_session.send_message(answer_prompt)
+                try:
+                    final_text = final_response.text.strip()
+                    # Clean potential markdown
+                    final_text = final_text.replace("```json", "").replace("```", "").strip()
+                    final_data = json.loads(final_text)
+                    # User requested strictly NO SQL in response, so we return None for sql_query
+                    return {"response": final_data.get("content"), "sql_query": None}
+                except Exception as json_err:
+                    logger.error(f"Error parsing final response: {json_err}")
+                    # If final response isn't JSON, just return text
+                    return {"response": final_response.text.strip(), "sql_query": None}
 
             except Exception as e:
-                logger.error(f"Action execution failed: {e}")
-                # Fallback: Strip JSON from the original response so we don't show raw code
-                final_response = strip_json(ai_text)
-                if not final_response:
-                    final_response = "I processed the sale, but had trouble confirming the details. Please check the dashboard."
+                db.rollback()
+                logger.error(f"Database Execution Error: {e}")
+                traceback.print_exc()
+                return {"response": f"I encountered an error while accessing the database. Error: {str(e)}", "sql_query": None}
 
-
-        return {
-            "response": final_response,
-            "sql_query": None 
-        }
+        return {"response": "I'm not sure how to help with that.", "sql_query": None}
 
     except Exception as e:
-        logger.error(f"Error in chat service: {e}")
+        logger.error(f"Global Error in process_chat_message: {e}")
+        traceback.print_exc()
         return {
             "response": "I'm having trouble connecting to my brain right now. Please try again later.",
             "sql_query": None
