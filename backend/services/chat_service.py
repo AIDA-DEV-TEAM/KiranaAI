@@ -1,161 +1,86 @@
+
 import os
-import json
-import re
 import google.generativeai as genai
 from sqlalchemy.orm import Session
-from sqlalchemy import text
-from dotenv import load_dotenv
+from sqlalchemy import func
+from ..database import Product, Sale
+from datetime import datetime, timedelta
+import logging
 
-load_dotenv()
+# Configure Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
+# Configure Gemini
+# Ensure GEMINI_API_KEY is set in .env
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 SYSTEM_PROMPT = """
-You are a smart, friendly, and efficient Kirana (Grocery) Shop Assistant.
-Your goal is to help the shopkeeper manage their inventory and sales using natural language.
+You are KiranaAI, an expert Grocery Store Assistant.
+Your Goal: Help the store owner (Storekeeper) manage inventory, track sales, and optimize their business.
 
-**Database Schema:**
-- `products` (id, name, category, price, stock, shelf_position)
-- `sales` (id, product_id, quantity, total_amount, timestamp)
+You have access to the following context about the store. Use it to answer questions accurately.
 
-**Your Capabilities:**
-1.  **Answer Questions**: Provide helpful answers about the shop's data.
-2.  **Execute Actions**: Generate SQL to update stock or record sales.
-3.  **Be Conversational**: If the user says "Hi" or "Thanks", reply naturally.
+Context:
+{context}
 
-**Rules for SQL Generation:**
-- **Read Data**: Use `SELECT`. Example: "How much rice?" -> `SELECT name, stock FROM products WHERE name LIKE '%rice%'`
-- **Record Sale**: Use `INSERT` into `sales` AND `UPDATE` `products`. **ALWAYS** follow with a `SELECT` to check the new stock.
-- **Restock**: Use `UPDATE`. **ALWAYS** follow with a `SELECT` to check the new stock.
+Guidelines:
+1. **Be Concise & Direct**: The user is busy. Give straight answers.
+2. **Data-Driven**: If asked about stock or sales, purely use the provided context. If data is missing, say so.
+3. **Proactive**: If stock is low, suggest reordering.
+4. **Professional Tone**: Friendly, respectful, and efficient (like a top-tier manager).
+5. **Language**: Respond in the same language as the user (English by default).
 
-**Response Format (CRITICAL):**
-You must **ALWAYS** reply with a valid JSON object. Do not output any text outside the JSON.
-
-**Format 1: For General Answers**
-```json
-{
-  "type": "answer",
-  "content": "Your friendly natural language response here. **IMPORTANT**: If listing multiple items (products, sales, prices), YOU MUST USE A MARKDOWN TABLE."
-}
-```
-
-**Format 2: For Database Actions**
-```json
-{
-  "type": "sql",
-  "content": "SELECT * FROM products..."
-}
-```
-
-**CRITICAL RULES:**
-1.  **Language**: The `content` field MUST be in the SAME language as the user's input (Hindi/Telugu/English).
-2.  **No Technical Terms**: The `content` for "answer" type must be simple and non-technical.
-3.  **Markdown Tables**: When showing lists of data (e.g., "Show all rice products", "List sales today"), format the output as a clean Markdown table.
-4.  **Valid JSON**: Ensure the output is strictly valid JSON.
+If the user asks "How is the store doing?", summarize key metrics (Sales, Low Stock).
+If the user asks "What should I order?", look at low stock items.
 """
 
-model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
-
-async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en"):
-    if not api_key:
-        raise Exception("Gemini API key not configured")
-
-    # Convert history to Gemini format
-    gemini_history = []
-    for msg in history:
-        role = "user" if msg.get("role") == "user" else "model"
-        # We need to ensure history parts are strings, not JSON objects if we want to maintain context cleanly
-        # But since we are changing the format, old history might confuse it. 
-        # For now, we pass the content as is.
-        gemini_history.append({"role": role, "parts": [msg.get("content")]})
-
-    chat_session = model.start_chat(history=gemini_history)
-    prompt = f"User: {message}\nLanguage: {language}\nRespond in {language}.\n"
-
+async def process_chat_message(message: str, db: Session, history: list, language: str = "en") -> dict:
     try:
-        response = chat_session.send_message(prompt)
-        text_response = response.text.strip()
+        # 1. Fetch Real-time Context
+        # Inventory Stats
+        total_products = db.query(func.count(Product.id)).scalar() or 0
+        low_stock_items = db.query(Product).filter(Product.stock <= (Product.max_stock * 0.5)).limit(10).all()
         
-        try:
-            data = json.loads(text_response)
-        except json.JSONDecodeError:
-            # Fallback if model outputs markdown code block
-            clean_text = text_response.replace("```json", "").replace("```", "").strip()
-            try:
-                data = json.loads(clean_text)
-            except:
-                # Ultimate fallback: treat as answer
-                return {"response": text_response, "sql_query": None}
+        # Sales Stats (Today)
+        today = datetime.now().date()
+        todays_sales = db.query(func.sum(Sale.total_amount)).filter(func.date(Sale.timestamp) == today).scalar() or 0.0
+        
+        # Format Context
+        low_stock_context = ", ".join([f"{p.name} (Qty: {p.stock}/{p.max_stock})" for p in low_stock_items]) if low_stock_items else "None"
+        
+        context_str = f"""
+        - Date: {datetime.now().strftime("%Y-%m-%d")}
+        - Total Products: {total_products}
+        - Today's Sales: ₹{todays_sales}
+        - Low Stock Items: {low_stock_context}
+        """
 
-        if data.get("type") == "answer":
-            return {"response": data.get("content"), "sql_query": None}
+        # 2. Prepare Prompt
+        messages = [
+            {"role": "user", "parts": [SYSTEM_PROMPT.format(context=context_str)]},
+        ]
+        
+        # Add History
+        for msg in history:
+            role = "user" if msg['role'] == 'user' else "model"
+            messages.append({"role": role, "parts": [msg['content']]})
+            
+        # Add Current Message
+        messages.append({"role": "user", "parts": [message]})
 
-        elif data.get("type") == "sql":
-            sql_query = data.get("content")
-            try:
-                # Clean up SQL
-                sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
-                queries = [q.strip() for q in sql_query.split(';') if q.strip()]
-                data_str = ""
-                changes_made = False
-                
-                for query in queries:
-                    if not any(query.upper().startswith(kw) for kw in ["SELECT", "INSERT", "UPDATE", "DELETE"]):
-                        continue
-
-                    result = db.execute(text(query))
-                    
-                    if query.upper().startswith("SELECT"):
-                        rows = result.fetchall()
-                        if rows:
-                            data_str += f"Query: {query}\nResult:\n"
-                            for row in rows:
-                                data_str += str(row) + "\n"
-                        else:
-                            data_str += f"Query: {query}\nResult: No data found.\n\n"
-                    else:
-                        if result.rowcount > 0:
-                            changes_made = True
-                            
-                if changes_made:
-                    db.commit()
-                
-                # Generate final natural language response
-                answer_prompt = f"""
-                User Question: {message}
-                SQL Queries Executed: {sql_query}
-                Data Retrieved:
-                {data_str}
-                Changes Made: {changes_made}
-                
-                Instructions:
-                1. Answer the user's question naturally based on the Data Retrieved.
-                2. If 'Changes Made' is True, confirm the action was successful.
-                3. **CRITICAL**: If you have data about remaining stock, YOU MUST mention it.
-                   - Example: "Sold 2 milk. Remaining stock: 8"
-                   - Example: "Added 10 sugar. Total stock is now: 50"
-                4. **CRITICAL**: Reply in the SAME language as the user's question ({language}).
-                5. **Formatting**: If the data retrieved contains multiple rows (more than 1), YOU MUST present it as a Markdown Table in your response.
-                6. **Output Format**: Return a JSON object: `{{ "type": "answer", "content": "..." }}`
-                """
-                
-                final_response = chat_session.send_message(answer_prompt)
-                try:
-                    final_data = json.loads(final_response.text.strip())
-                    return {"response": final_data.get("content"), "sql_query": sql_query}
-                except:
-                    # If final response isn't JSON, just return text
-                    return {"response": final_response.text.strip(), "sql_query": sql_query}
-
-            except Exception as e:
-                db.rollback()
-                return {"response": f"I encountered an error while accessing the database. Error: {str(e)}", "sql_query": sql_query}
-
-        return {"response": "I'm not sure how to help with that.", "sql_query": None}
+        # 3. Call Gemini
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(messages)
+        
+        return {
+            "response": response.text,
+            "sql_query": None 
+        }
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise e
+        logger.error(f"Error in chat service: {e}")
+        return {
+            "response": "I'm having trouble connecting to my brain right now. Please try again later.",
+            "sql_query": None
+        }

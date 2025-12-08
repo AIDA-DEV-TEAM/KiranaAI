@@ -4,7 +4,7 @@ import Layout from './components/Layout';
 import ChatInterface from './components/ChatInterface';
 import Dashboard from './components/Dashboard';
 import StorekeeperView from './components/StorekeeperView';
-import StockManager from './components/StockManager';
+
 import ContactUs from './components/ContactUs';
 import SettingsView from './components/SettingsView';
 import SalesHistory from './components/SalesHistory';
@@ -78,7 +78,7 @@ function App() {
               <Route path="/" element={<ChatInterface messages={messages} setMessages={setMessages} />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/storekeeper" element={<StorekeeperView />} />
-              <Route path="/stock" element={<StockManager />} />
+
               <Route path="/settings" element={<SettingsView />} />
               <Route path="/contact" element={<ContactUs />} />
               <Route path="/sales" element={<SalesHistory />} />

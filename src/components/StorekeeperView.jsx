@@ -71,6 +71,15 @@ const StorekeeperView = () => {
     const [marketPrices, setMarketPrices] = useState([]);
     const { t, i18n } = useTranslation();
 
+    // Swipe State
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
+    const minSwipeDistance = 50;
+
+    // Stock Update State
+    const [stockUpdates, setStockUpdates] = useState({}); // { [id]: newStock }
+    const [stockLoading, setStockLoading] = useState({}); // { [id]: boolean }
+
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
@@ -124,6 +133,66 @@ const StorekeeperView = () => {
         });
         setIsModalOpen(true);
     };
+
+    // Swipe Handlers
+    const onTouchStart = (e) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+        const tabs = ['catalog', 'shortfall', 'prices'];
+        const currentIndex = tabs.indexOf(activeTab);
+
+        if (isLeftSwipe && currentIndex < tabs.length - 1) {
+            setActiveTab(tabs[currentIndex + 1]);
+        }
+        if (isRightSwipe && currentIndex > 0) {
+            setActiveTab(tabs[currentIndex - 1]);
+        }
+    };
+
+    // Stock Logic
+    const handleStockChange = (productId, currentStock, delta) => {
+        setStockUpdates(prev => {
+            const currentVal = prev[productId] ?? currentStock;
+            const newVal = Math.max(0, currentVal + delta);
+            if (newVal === currentStock) {
+                const { [productId]: _, ...rest } = prev;
+                return rest;
+            }
+            return { ...prev, [productId]: newVal };
+        });
+    };
+
+    const saveStockUpdate = async (product) => {
+        const newStock = stockUpdates[product.id];
+        if (newStock === undefined) return;
+
+        setStockLoading(prev => ({ ...prev, [product.id]: true }));
+        try {
+            await updateProduct(product.id, { ...product, stock: newStock });
+            // Optimistic update locally to avoid flicker
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: newStock } : p));
+            setStockUpdates(prev => {
+                const { [product.id]: _, ...rest } = prev;
+                return rest;
+            });
+            await refreshInventory(true);
+        } catch (error) {
+            console.error("Failed to update stock", error);
+            alert("Failed to update stock");
+        } finally {
+            setStockLoading(prev => ({ ...prev, [product.id]: false }));
+        }
+    };
+
 
 
 
@@ -204,7 +273,12 @@ const StorekeeperView = () => {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto pb-safe-nav">
+            <div
+                className="flex-1 overflow-y-auto pb-safe-nav touch-pan-y"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
 
                 {/* Screen 1: Catalog */}
                 {activeTab === 'catalog' && (
@@ -250,8 +324,8 @@ const StorekeeperView = () => {
                         ) : (
                             <div className="grid grid-cols-1 gap-3">
                                 {filteredProducts.length > 0 ? filteredProducts.map(product => (
-                                    <div key={product.id} className="bg-card p-4 rounded-2xl shadow-sm border border-border flex items-center gap-4 active:scale-[0.99] transition-transform">
-                                        <div className="w-16 h-16 bg-muted/50 rounded-xl flex items-center justify-center text-3xl shrink-0 overflow-hidden">
+                                    <div key={product.id} className="bg-card p-3 rounded-2xl shadow-sm border border-border flex items-start gap-3">
+                                        <div className="w-20 h-20 bg-muted/50 rounded-xl flex items-center justify-center text-3xl shrink-0 overflow-hidden self-center">
                                             {product.image_url ? (
                                                 <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                                             ) : (
@@ -261,26 +335,62 @@ const StorekeeperView = () => {
                                                 })()
                                             )}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-semibold text-foreground truncate">{product.name}</h3>
-                                            <p className="text-xs text-muted-foreground">{product.category || 'General'}</p>
-                                            <div className="flex items-center gap-3 mt-1.5">
-                                                <span className="text-sm font-bold text-primary">₹{product.price}</span>
-                                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{t('stock')}: {product.stock}</span>
-                                                {product.shelf_position && (
-                                                    <span className="text-xs text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
-                                                        {product.shelf_position}
+                                        <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+                                            <div>
+                                                <div className="flex justify-between items-start">
+                                                    <h3 className="font-bold text-foreground truncate text-base">{product.name}</h3>
+                                                    <button onClick={() => handleEditClick(product)} className="text-muted-foreground p-1 hover:bg-muted rounded-full">
+                                                        <MoreVertical size={16} />
+                                                    </button>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                                    <span>{product.category || 'General'}</span>
+                                                    <span>•</span>
+                                                    <span className="font-medium text-purple-600 bg-purple-500/10 px-1.5 py-0.5 rounded text-[10px] border border-purple-500/20">
+                                                        {product.shelf_position || 'N/A'}
                                                     </span>
-                                                )}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <button
-                                                onClick={() => handleEditClick(product)}
-                                                className="p-2.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors active:scale-95"
-                                            >
-                                                <MoreVertical size={20} />
-                                            </button>
+
+                                            <div className="flex items-end justify-between mt-3">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs text-muted-foreground">Price</span>
+                                                    <span className="text-sm font-bold text-foreground">₹{product.price}</span>
+                                                </div>
+
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <div className="flex items-center gap-3 bg-muted/50 rounded-lg p-1">
+                                                        <button
+                                                            onClick={() => handleStockChange(product.id, product.stock, -1)}
+                                                            className="w-8 h-8 flex items-center justify-center bg-background rounded-md shadow-sm border border-border text-foreground hover:bg-muted active:scale-95 transition-all"
+                                                        >
+                                                            <div className="w-3 h-0.5 bg-current rounded-full" />
+                                                        </button>
+                                                        <span className="text-xl font-bold text-primary min-w-[1.5rem] text-center">
+                                                            {stockUpdates[product.id] ?? product.stock}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => handleStockChange(product.id, product.stock, 1)}
+                                                            className="w-8 h-8 flex items-center justify-center bg-primary text-primary-foreground rounded-md shadow-sm hover:bg-primary/90 active:scale-95 transition-all"
+                                                        >
+                                                            <Plus size={16} strokeWidth={3} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {stockUpdates[product.id] !== undefined && (
+                                                <div className="mt-2 flex justify-end">
+                                                    <button
+                                                        onClick={() => saveStockUpdate(product)}
+                                                        disabled={stockLoading[product.id]}
+                                                        className="text-xs bg-black dark:bg-white text-white dark:text-black font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
+                                                    >
+                                                        {stockLoading[product.id] ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                                                        {t('update_stock')}
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )) : (
@@ -370,7 +480,12 @@ const StorekeeperView = () => {
                     <div className="px-2 py-4 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="text-green-500" size={20} />
-                            <h2 className="text-lg font-bold text-foreground">{t('market_intelligence')}</h2>
+                            <h2 className="text-lg font-bold text-foreground">
+                                {t('market_intelligence')}
+                                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                                    {new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                </span>
+                            </h2>
                         </div>
 
                         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
@@ -384,25 +499,62 @@ const StorekeeperView = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {marketPrices.length > 0 ? marketPrices.map((item, index) => (
-                                        <tr key={index} className="hover:bg-muted/50 transition-colors">
-                                            <td className="px-4 py-3 font-medium text-foreground">
-                                                {item.commodity}
-                                                <div className="text-[10px] text-muted-foreground font-normal">{item.market}</div>
-                                            </td>
-                                            <td className="px-4 py-3 text-muted-foreground">{item.district}</td>
-                                            <td className="px-4 py-3 font-bold text-primary">₹{item.modal_price}</td>
-                                            <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                                                {item.arrival_date}
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan="4" className="px-4 py-8 text-center text-muted-foreground">
-                                                {loadingMandi ? <Loader2 className="animate-spin mx-auto" /> : "No market data available"}
-                                            </td>
-                                        </tr>
-                                    )}
+                                    {(() => {
+                                        // Create a Set of normalized inventory keywords (names and categories) for efficient matching
+                                        // We confirm if the commodity is relevant to what we sell
+                                        const uniqueInventoryKeywords = new Set([
+                                            ...products.map(p => p.name.toLowerCase()),
+                                            ...products.map(p => p.category.toLowerCase())
+                                        ]);
+
+                                        const livePrices = marketPrices.filter(item => {
+                                            // 1. Validity Check
+                                            if (!item.arrival_date || !item.commodity) return false;
+
+                                            // 2. Inventory Match Check
+                                            const commodity = item.commodity.toLowerCase();
+                                            const isRelevant = Array.from(uniqueInventoryKeywords).some(keyword =>
+                                                keyword.includes(commodity) || commodity.includes(keyword)
+                                            );
+
+                                            if (!isRelevant) return false;
+
+                                            // 3. Price Validity (User also asked for "Live" previously, keeping valid price check)
+                                            return parseFloat(item.modal_price) > 0;
+                                        });
+
+                                        if (livePrices.length === 0) {
+                                            return (
+                                                <tr>
+                                                    <td colSpan="4" className="px-4 py-8 text-center text-muted-foreground">
+                                                        {loadingMandi ? <Loader2 className="animate-spin mx-auto" /> : (
+                                                            <div className="flex flex-col items-center gap-2">
+                                                                <p>{t('no_sales') || "No relevant market data found."}</p>
+                                                                <p className="text-xs">Prices are only shown for items in your inventory.</p>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        }
+
+                                        return livePrices.map((item, index) => (
+                                            <tr key={index} className="hover:bg-muted/50 transition-colors">
+                                                <td className="px-4 py-3 font-medium text-foreground">
+                                                    <div className="flex items-center gap-2">
+                                                        {item.commodity}
+                                                        <span className="bg-green-500/10 text-green-600 text-[10px] font-bold px-1.5 py-0.5 rounded">{t('live')}</span>
+                                                    </div>
+                                                    <div className="text-[10px] text-muted-foreground font-normal">{item.market}</div>
+                                                </td>
+                                                <td className="px-4 py-3 text-muted-foreground">{item.district}</td>
+                                                <td className="px-4 py-3 font-bold text-primary">₹{item.modal_price}</td>
+                                                <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                                                    {item.arrival_date}
+                                                </td>
+                                            </tr>
+                                        ));
+                                    })()}
                                 </tbody>
                             </table>
                         </div>

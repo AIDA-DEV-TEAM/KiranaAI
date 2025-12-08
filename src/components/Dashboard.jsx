@@ -12,13 +12,8 @@ const Dashboard = () => {
 
     const loading = loadingInventory || loadingSales;
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-[50vh]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
+    // Optimized: eliminated blocking loader
+    // if (loading) { return ... }
 
     const lowStockItems = inventory.filter(item => item.stock < (item.max_stock || 50));
     const totalSalesToday = sales
@@ -73,13 +68,6 @@ const Dashboard = () => {
                         <div className="flex items-center justify-between mb-4">
                             <div className={cn("p-3 rounded-xl", stat.bg, stat.color)}>
                                 <stat.icon size={24} />
-                            </div>
-                            <div className={cn(
-                                "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
-                                stat.trendUp ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10" : "text-red-600 dark:text-red-400 bg-red-500/10"
-                            )}>
-                                {stat.trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                                {stat.trend}
                             </div>
                         </div>
                         <div>

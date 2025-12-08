@@ -12,7 +12,7 @@ const Layout = ({ children }) => {
         { icon: MessageSquare, label: 'Chat', path: '/' },
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: Store, label: 'Store', path: '/storekeeper' },
-        { icon: Package, label: 'Stock', path: '/stock' },
+
         { icon: Settings, label: 'Settings', path: '/settings' },
     ];
 

@@ -58,7 +58,12 @@ const resources = {
             "speak_now_hint": "Speak now, I'm listening...",
             "processing_hint": "Processing your request...",
             "speaking_hint": "Tap the button below to interrupt",
-            "start_voice_mode": "Start Voice Mode"
+            "start_voice_mode": "Start Voice Mode",
+            "update_stock": "Update Stock",
+            "live": "Live",
+            "shelf": "Shelf",
+            "qty": "Qty",
+            "stock_left": "Stock Left"
         }
     },
     hi: {
