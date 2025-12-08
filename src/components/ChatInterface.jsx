@@ -10,8 +10,11 @@ import { useTranslation } from 'react-i18next';
 import { useVoiceManager } from '../hooks/useVoiceManager';
 import VoiceModeModal from './VoiceModeModal';
 
+import { useAppData } from '../context/AppDataContext';
+
 const ChatInterface = ({ messages, setMessages }) => {
     const { t, i18n } = useTranslation();
+    const { refreshInventory, refreshSales } = useAppData();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -67,6 +70,13 @@ const ChatInterface = ({ messages, setMessages }) => {
                 content: responseText,
                 sql: data.sql_query
             }]);
+
+            // Refresh data if action was performed
+            if (data.action_performed) {
+                console.log("Action performed, refreshing data...");
+                refreshInventory(true);
+                refreshSales(true);
+            }
 
         } catch (error) {
             console.error("Chat error:", error);

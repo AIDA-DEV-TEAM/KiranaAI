@@ -50,3 +50,4 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     sql_query: Optional[str] = None
+    action_performed: bool = False
