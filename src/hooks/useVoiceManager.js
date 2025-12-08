@@ -74,12 +74,20 @@ export const useVoiceManager = (currentLanguage = 'en') => {
 
     // Process the transcribed text through backend
     const processTranscript = useCallback(async (text) => {
-        if (!text || text.trim() === '') return;
+        console.log('[VoiceManager] ========== START PROCESSING ==========');
+        console.log('[VoiceManager] Text to process:', text);
+
+        if (!text || text.trim() === '') {
+            console.log('[VoiceManager] ERROR: Empty text, aborting');
+            return;
+        }
 
         setVoiceState(VOICE_STATES.THINKING);
         setTranscript(text);
+        console.log('[VoiceManager] State set to THINKING');
 
         try {
+            console.log('[VoiceManager] Calling backend API...');
             // Send to backend chat API
             const response = await chatWithData(
                 text,
@@ -87,8 +95,10 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                 currentLanguage
             );
 
+            console.log('[VoiceManager] Backend response received:', response);
             const aiText = response.response;
             setAiResponse(aiText);
+            console.log('[VoiceManager] AI Response:', aiText);
 
             // Update conversation history
             conversationHistoryRef.current.push(
@@ -102,11 +112,15 @@ export const useVoiceManager = (currentLanguage = 'en') => {
             }
 
             // Speak the response
+            console.log('[VoiceManager] Calling speakResponse...');
             await speakResponse(aiText);
 
         } catch (err) {
-            console.error('Error processing transcript:', err);
-            setError('Failed to process your request. Please try again.');
+            console.error('[VoiceManager] ========== ERROR IN PROCESSING ==========');
+            console.error('[VoiceManager] Error details:', err);
+            console.error('[VoiceManager] Error message:', err.message);
+            console.error('[VoiceManager] Error stack:', err.stack);
+            setError(`Failed: ${err.message}`);
             setVoiceState(VOICE_STATES.IDLE);
             setIsActive(false);
         }
@@ -217,11 +231,25 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                         // Force process after 3 seconds regardless of silence detection
                         forceProcessTimerRef.current = setTimeout(async () => {
                             const textToProcess = lastTranscript; // Use ref variable, not closure variable
-                            console.log('[VoiceManager] FORCE PROCESSING after 3s:', textToProcess);
-                            clearTimers();
+                            console.log('[VoiceManager] ========== FORCE TIMER FIRED ==========');
+                            console.log('[VoiceManager] Processing text:', textToProcess);
+
+                            // Clear only silence and no-speech timers, not ourselves
+                            if (silenceTimerRef.current) {
+                                clearTimeout(silenceTimerRef.current);
+                                silenceTimerRef.current = null;
+                            }
+                            if (noSpeechTimerRef.current) {
+                                clearTimeout(noSpeechTimerRef.current);
+                                noSpeechTimerRef.current = null;
+                            }
+
                             await stopListening();
                             if (textToProcess && textToProcess.trim().length > 3) {
+                                console.log('[VoiceManager] Calling processTranscript with:', textToProcess);
                                 await processTranscript(textToProcess);
+                            } else {
+                                console.log('[VoiceManager] ERROR: Text too short or empty:', textToProcess);
                             }
                         }, 3000); // Force process after 3 seconds
                     }
