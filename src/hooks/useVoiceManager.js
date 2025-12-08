@@ -161,6 +161,8 @@ export const useVoiceManager = (currentLanguage = 'en') => {
         isListeningRef.current = true;
 
         try {
+            console.log('[VoiceManager] Starting listening...');
+
             // Check permissions
             const hasPermission = await SpeechRecognition.checkPermissions();
             if (hasPermission.speechRecognition !== 'granted') {
@@ -179,24 +181,32 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                 popup: false
             });
 
+            console.log('[VoiceManager] Speech recognition started');
+
             // Set no-speech timeout
             noSpeechTimerRef.current = setTimeout(() => {
+                console.log('[VoiceManager] No-speech timeout triggered');
                 if (isListeningRef.current && voiceState === VOICE_STATES.LISTENING) {
                     setError('No speech detected. Voice mode stopped.');
                     stopVoiceMode();
                 }
             }, NO_SPEECH_TIMEOUT_MS);
 
-            // Listen for speech results
+            let lastTranscript = '';
+
+            // Listen for partial results
             SpeechRecognition.addListener('partialResults', (data) => {
+                console.log('[VoiceManager] Partial results:', data);
                 if (data.matches && data.matches.length > 0) {
                     const interimText = data.matches[0];
+                    lastTranscript = interimText;
                     setTranscript(interimText);
 
                     // Reset no-speech timer since we're getting input
                     if (noSpeechTimerRef.current) {
                         clearTimeout(noSpeechTimerRef.current);
                         noSpeechTimerRef.current = setTimeout(() => {
+                            console.log('[VoiceManager] No-speech timeout after partial results');
                             if (isListeningRef.current) {
                                 setError('No speech detected. Voice mode stopped.');
                                 stopVoiceMode();
@@ -210,6 +220,7 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                     }
 
                     silenceTimerRef.current = setTimeout(async () => {
+                        console.log('[VoiceManager] Silence detected, processing:', interimText);
                         // Process the transcript after silence detected
                         if (interimText && interimText.trim() !== '') {
                             await stopListening();
@@ -219,14 +230,36 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                 }
             });
 
+            // Listen for final results (when user finishes speaking)
+            SpeechRecognition.addListener('finalResults', async (data) => {
+                console.log('[VoiceManager] Final results:', data);
+                if (data.matches && data.matches.length > 0) {
+                    const finalText = data.matches[0];
+                    console.log('[VoiceManager] Processing final text:', finalText);
+
+                    // Clear timers
+                    clearTimers();
+
+                    // Process immediately
+                    await stopListening();
+                    await processTranscript(finalText);
+                } else if (lastTranscript && lastTranscript.trim() !== '') {
+                    // Use last partial result if no final result
+                    console.log('[VoiceManager] No final result, using last transcript:', lastTranscript);
+                    clearTimers();
+                    await stopListening();
+                    await processTranscript(lastTranscript);
+                }
+            });
+
         } catch (err) {
-            console.error('Error starting speech recognition:', err);
+            console.error('[VoiceManager] Error starting speech recognition:', err);
             setError(err.message || 'Failed to start listening');
             isListeningRef.current = false;
             setVoiceState(VOICE_STATES.IDLE);
             setIsActive(false);
         }
-    }, [getTTSLanguage, voiceState, processTranscript, stopListening]);
+    }, [getTTSLanguage, voiceState, processTranscript, stopListening, clearTimers, stopVoiceMode]);
 
     // Start voice mode
     const startVoiceMode = useCallback(async () => {
