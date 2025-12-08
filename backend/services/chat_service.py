@@ -2,7 +2,7 @@
 import os
 import google.generativeai as genai
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from ..database import Product, Sale
 from datetime import datetime, timedelta
 import logging
@@ -19,20 +19,22 @@ SYSTEM_PROMPT = """
 You are KiranaAI, an expert Grocery Store Assistant.
 Your Goal: Help the store owner (Storekeeper) manage inventory, track sales, and optimize their business.
 
-You have access to the following context about the store. Use it to answer questions accurately.
+You have access to REAL-TIME data about the store.
 
 Context:
 {context}
 
 Guidelines:
 1. **Be Concise & Direct**: The user is busy. Give straight answers.
-2. **Data-Driven**: If asked about stock or sales, purely use the provided context. If data is missing, say so.
+2. **Data-Driven**: 
+   - If asked about a specific product (e.g., "Rice"), check the "Specific Product Details" section.
+   - If asked about sales, use "Today's Sales".
+   - If STOCK is low (see "Low Stock Items"), WARN the user.
 3. **Proactive**: If stock is low, suggest reordering.
-4. **Professional Tone**: Friendly, respectful, and efficient (like a top-tier manager).
+4. **Professional Tone**: Friendly, respectful, and efficient.
 5. **Language**: Respond in the same language as the user (English by default).
 
-If the user asks "How is the store doing?", summarize key metrics (Sales, Low Stock).
-If the user asks "What should I order?", look at low stock items.
+If the user asks "How is the store doing?", summarize key metrics and mention any critical low stock.
 """
 
 async def process_chat_message(message: str, db: Session, history: list, language: str = "en") -> dict:
@@ -46,14 +48,37 @@ async def process_chat_message(message: str, db: Session, history: list, languag
         today = datetime.now().date()
         todays_sales = db.query(func.sum(Sale.total_amount)).filter(func.date(Sale.timestamp) == today).scalar() or 0.0
         
+        # Relevant Products Search (Context-Aware Retrieval)
+        # Split message into keywords > 2 chars to find mentioned products
+        search_terms = [w.strip() for w in message.split() if len(w.strip()) > 2]
+        relevant_products = []
+        if search_terms:
+            # Create a simple OR query for product names matching keywords
+            conditions = [Product.name.ilike(f"%{term}%") for term in search_terms]
+            if conditions:
+                relevant_products = db.query(Product).filter(or_(*conditions)).limit(5).all()
+
         # Format Context
         low_stock_context = ", ".join([f"{p.name} (Qty: {p.stock}/{p.max_stock})" for p in low_stock_items]) if low_stock_items else "None"
         
+        relevant_items_context = "None"
+        if relevant_products:
+            relevant_items_context = "\n".join([
+                f"- {p.name}: Stock {p.stock}/{p.max_stock}, Price ₹{p.price}, Shelf: {p.shelf_position or 'N/A'}"
+                for p in relevant_products
+            ])
+
         context_str = f"""
+        [General Stats]
         - Date: {datetime.now().strftime("%Y-%m-%d")}
         - Total Products: {total_products}
         - Today's Sales: ₹{todays_sales}
-        - Low Stock Items: {low_stock_context}
+        
+        [Low Stock Items (Action Required)]
+        {low_stock_context}
+
+        [Specific Product Details (Based on your query)]
+        {relevant_items_context}
         """
 
         # 2. Prepare Prompt
@@ -70,11 +95,19 @@ async def process_chat_message(message: str, db: Session, history: list, languag
         messages.append({"role": "user", "parts": [message]})
 
         # 3. Call Gemini
+        # Using gemini-flash-latest to avoid 404s
         model = genai.GenerativeModel('gemini-flash-latest')
         response = model.generate_content(messages)
         
+        try:
+            text_response = response.text
+        except ValueError:
+            # Handle cases where response might be empty or blocked even with finish_reason=STOP
+            logger.warning(f"Gemini response invalid/empty. Candidates: {response.candidates}")
+            text_response = "I apologize, but I couldn't generate a response at the moment. Please try again."
+
         return {
-            "response": response.text,
+            "response": text_response,
             "sql_query": None 
         }
 
