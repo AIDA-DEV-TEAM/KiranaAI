@@ -105,10 +105,20 @@ async def process_chat_message(message: str, db: Session, history: list, languag
         sql_query = None
         final_response = ai_text
 
+        # Helper to strip JSON for fallback
+        def strip_json(text):
+            # Remove code blocks with optional language identifier
+            clean = re.sub(r'```(?:json)?\s*\{.*?\}\s*```', '', text, flags=re.DOTALL | re.IGNORECASE)
+            # Remove inline JSON-like structures if any strict ones remain (fallback)
+            return clean.strip()
+
         # Extract JSON if present
-        json_match = re.search(r'```json\s*(\{.*?\})\s*```', ai_text, re.DOTALL)
+        # We look for a code block first
+        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', ai_text, re.DOTALL | re.IGNORECASE)
+        
+        # Fallback regex if code block markers are missing but JSON structure exists
         if not json_match:
-            json_match = re.search(r'(\{.*"action":.*\})', ai_text, re.DOTALL)
+            json_match = re.search(r'(\{.*"action":\s*"RECORD_SALE".*\})', ai_text, re.DOTALL)
 
         if json_match:
             try:
@@ -161,6 +171,7 @@ async def process_chat_message(message: str, db: Session, history: list, languag
                     You performed a sales action. Here is the result:
                     {result_context}
                     
+                    Context: {message}
                     Task: Generate a professional, concise confirmation message for the user in {language} language.
                     Use emojis. If success, show Revenue and Stock Left clearly. 
                     If critical low stock, warn the user.
@@ -171,8 +182,11 @@ async def process_chat_message(message: str, db: Session, history: list, languag
 
             except Exception as e:
                 logger.error(f"Action execution failed: {e}")
-                # Fallback to original text if validation fails
-                pass
+                # Fallback: Strip JSON from the original response so we don't show raw code
+                final_response = strip_json(ai_text)
+                if not final_response:
+                    final_response = "I processed the sale, but had trouble confirming the details. Please check the dashboard."
+
 
         return {
             "response": final_response,
