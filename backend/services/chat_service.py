@@ -83,7 +83,13 @@ async def process_chat_message(message: str, db: Session, history: list = [], la
 
     try:
         response = chat_session.send_message(prompt)
-        text_response = response.text.strip()
+        text_response = ""
+        try:
+            text_response = response.text.strip()
+        except ValueError:
+             logger.warning("Gemini response blocked or empty.")
+             return {"response": "I'm sorry, I couldn't generate a response. Please try rephrasing.", "sql_query": None, "action_performed": False}
+             
         logger.info(f"AI Raw Response: {text_response}")
 
         try:
@@ -148,7 +154,13 @@ async def process_chat_message(message: str, db: Session, history: list = [], la
 
                 final_response = chat_session.send_message(answer_prompt)
                 try:
-                    final_text = final_response.text.strip()
+                    final_text = ""
+                    try:
+                        final_text = final_response.text.strip()
+                    except ValueError:
+                         logger.warning("Gemini final response blocked or empty.")
+                         return {"response": "Action completed, but I couldn't generate a summary.", "sql_query": None, "action_performed": action_performed}
+
                     final_text = final_text.replace("```json", "").replace("```", "").strip()
                     final_data = json.loads(final_text)
                     return {"response": final_data.get("content"), "sql_query": None, "action_performed": action_performed}
