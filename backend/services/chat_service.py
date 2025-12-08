@@ -70,7 +70,7 @@ async def process_chat_message(message: str, db: Session, history: list, languag
         messages.append({"role": "user", "parts": [message]})
 
         # 3. Call Gemini
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-flash-latest')
         response = model.generate_content(messages)
         
         return {
