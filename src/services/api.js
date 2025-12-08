@@ -80,12 +80,62 @@ export const updateShelfLocations = async (items) => {
     return response.data;
 };
 
-export const getTTS = async (text, language = 'en') => {
-    const response = await api.get('/tts/', {
-        params: { text, language },
-        responseType: 'blob'
-    });
-    return response.data;
+export const getTTS = async (text, language = 'en', retries = 2) => {
+    const timeout = 10000; // 10 second timeout
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            console.log(`[API] getTTS attempt ${attempt + 1}/${retries + 1}`);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            const response = await api.get('/tts/', {
+                params: { text, language },
+                responseType: 'arraybuffer',
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            // Convert ArrayBuffer to Base64
+            const base64 = btoa(
+                new Uint8Array(response.data)
+                    .reduce((data, byte) => data + String.fromCharCode(byte), '')
+            );
+
+            console.log(`[API] getTTS success (${response.data.byteLength} bytes)`);
+            return `data:audio/mp3;base64,${base64}`;
+
+        } catch (error) {
+            const isLastAttempt = attempt === retries;
+
+            if (error.name === 'AbortError' || error.code === 'ECONNABORTED') {
+                console.error(`[API] getTTS timeout (attempt ${attempt + 1})`);
+                if (isLastAttempt) {
+                    throw new Error('Voice service timeout - please check your connection');
+                }
+            } else if (error.response?.status) {
+                console.error(`[API] getTTS server error: ${error.response.status}`);
+                throw new Error(`Voice service error: ${error.response.status}`);
+            } else if (error.request) {
+                console.error(`[API] getTTS network error (attempt ${attempt + 1})`);
+                if (isLastAttempt) {
+                    throw new Error('Network error - please check your connection');
+                }
+            } else {
+                console.error(`[API] getTTS unknown error:`, error);
+                throw error;
+            }
+
+            // Wait before retry (exponential backoff)
+            if (!isLastAttempt) {
+                const delay = Math.min(1000 * Math.pow(2, attempt), 3000);
+                console.log(`[API] Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
 };
 
 

@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import edge_tts
 from gtts import gTTS
+from ..services.audio_cache import get_cache
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 
@@ -24,28 +25,61 @@ async def generate_tts(text: str, language: str = "en"):
         }
         
         voice = voice_map.get(language, 'en-IN-NeerjaNeural')
-        print(f"Generating TTS for: '{text}' with voice: {voice}")
+        print(f"[TTS] Generating for: '{text[:50]}...' with voice: {voice}")
 
-        async def audio_stream():
+        # Check cache first
+        cache = get_cache()
+        cached_audio = await cache.get(text, language, voice)
+        
+        if cached_audio:
+            print(f"[TTS] ✓ Cache HIT - returning cached audio ({len(cached_audio)} bytes)")
+            return StreamingResponse(
+                io.BytesIO(cached_audio),
+                media_type="audio/mpeg"
+            )
+        
+        print(f"[TTS] Cache MISS - generating new audio")
+
+        async def audio_stream_with_cache():
+            audio_buffer = io.BytesIO()
             try:
+                # Generate with edge-tts
                 communicate = edge_tts.Communicate(text, voice)
                 async for chunk in communicate.stream():
                     if chunk["type"] == "audio":
+                        audio_buffer.write(chunk["data"])
                         yield chunk["data"]
+                
+                # Cache the generated audio
+                audio_data = audio_buffer.getvalue()
+                await cache.set(text, language, voice, audio_data)
+                print(f"[TTS] ✓ Audio cached ({len(audio_data)} bytes)")
+                
             except Exception as e:
-                print(f"EdgeTTS failed: {e}. Falling back to gTTS.")
+                print(f"[TTS] EdgeTTS failed: {e}. Falling back to gTTS.")
                 # Fallback to gTTS
-                mp3_fp = io.BytesIO()
+                audio_buffer = io.BytesIO()
                 tts = gTTS(text=text, lang=language)
-                tts.write_to_fp(mp3_fp)
-                mp3_fp.seek(0)
-                yield mp3_fp.read()
+                tts.write_to_fp(audio_buffer)
+                audio_buffer.seek(0)
+                audio_data = audio_buffer.read()
+                
+                # Cache gTTS fallback too
+                await cache.set(text, language, voice, audio_data)
+                yield audio_data
 
         return StreamingResponse(
-            audio_stream(), 
+            audio_stream_with_cache(), 
             media_type="audio/mpeg"
         )
         
     except Exception as e:
-        print(f"Error in TTS: {str(e)}")
+        print(f"[TTS] Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/cache/stats")
+async def get_cache_stats():
+    """Get TTS cache statistics"""
+    cache = get_cache()
+    return cache.get_stats()
+

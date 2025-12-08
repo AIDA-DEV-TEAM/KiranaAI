@@ -14,12 +14,21 @@ const ChatInterface = ({ messages, setMessages }) => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isLiveMode, setIsLiveMode] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const messagesEndRef = useRef(null);
 
     // Internal handler for voice input completion
     const handleVoiceInput = (text) => {
         handleSend(null, text, 'voice');
+    };
+
+    // Error handler for voice issues
+    const handleVoiceError = (message) => {
+        console.error('[ChatInterface] Voice error:', message);
+        setErrorMessage(message);
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => setErrorMessage(''), 5000);
     };
 
     // Helper to get correct locale for Indian languages
@@ -50,7 +59,8 @@ const ChatInterface = ({ messages, setMessages }) => {
         cancelOutput
     } = useVoiceManager({
         language: getVoiceLocale(i18n.language),
-        onInputComplete: handleVoiceInput
+        onInputComplete: handleVoiceInput,
+        onError: handleVoiceError
     });
 
     const scrollToBottom = () => {
@@ -190,6 +200,13 @@ const ChatInterface = ({ messages, setMessages }) => {
             {/* Live Mode Overlay */}
             {isLiveMode && (
                 <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center transition-all duration-500 animate-in fade-in">
+
+                    {/* Error Toast */}
+                    {errorMessage && (
+                        <div className="absolute top-24 left-4 right-4 z-20 bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-xl shadow-lg animate-in slide-in-from-top-4 duration-300">
+                            <p className="text-sm font-medium">{errorMessage}</p>
+                        </div>
+                    )}
 
                     {/* Top Controls */}
                     <div className="absolute top-0 left-0 right-0 p-6 pt-safe flex justify-between items-center z-10">
