@@ -12,8 +12,8 @@ export const VOICE_LANGUAGE_MAP = {
     'pa': 'pa-IN'   // Punjabi (India)
 };
 
-// Silence detection threshold (milliseconds)
-export const SILENCE_TIMEOUT_MS = 2000; // 2 seconds of silence to trigger processing
+// Silence detection threshold (milliseconds) - reduced for better responsiveness
+export const SILENCE_TIMEOUT_MS = 1500; // 1.5 seconds of silence to trigger processing
 
 // No speech detected timeout (milliseconds)
 export const NO_SPEECH_TIMEOUT_MS = 20000; // 20 seconds of no speech to auto-stop

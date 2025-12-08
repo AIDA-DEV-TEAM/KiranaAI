@@ -220,9 +220,12 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                     silenceTimerRef.current = setTimeout(async () => {
                         console.log('[VoiceManager] Silence detected, processing:', interimText);
                         // Process the transcript after silence detected
-                        if (interimText && interimText.trim() !== '') {
+                        // Only process if we have meaningful text (more than 3 characters)
+                        if (interimText && interimText.trim().length > 3) {
                             await stopListening();
                             await processTranscript(interimText);
+                        } else {
+                            console.log('[VoiceManager] Transcript too short, ignoring:', interimText);
                         }
                     }, SILENCE_TIMEOUT_MS);
                 }
