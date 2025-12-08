@@ -3,65 +3,31 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
-import { Send, Bot, User, Loader2, Mic, X, Radio, Sparkles, Volume2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Mic, X } from 'lucide-react';
 import { chatWithData } from '../services/api';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
-import { useVoiceManager, VoiceState } from '../hooks/useVoiceManager';
+import { useVoiceManager } from '../hooks/useVoiceManager';
+import VoiceModeModal from './VoiceModeModal';
 
 const ChatInterface = ({ messages, setMessages }) => {
     const { t, i18n } = useTranslation();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [isLiveMode, setIsLiveMode] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
+    const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
     const messagesEndRef = useRef(null);
 
-    // Internal handler for voice input completion
-    const handleVoiceInput = (text) => {
-        handleSend(null, text, 'voice');
-    };
-
-    // Error handler for voice issues
-    const handleVoiceError = (message) => {
-        console.error('[ChatInterface] Voice error:', message);
-        setErrorMessage(message);
-        // Auto-dismiss after 5 seconds
-        setTimeout(() => setErrorMessage(''), 5000);
-    };
-
-    // Helper to get correct locale for Indian languages
-    const getVoiceLocale = (lang) => {
-        const localeMap = {
-            'hi': 'hi-IN',
-            'bn': 'bn-IN',
-            'te': 'te-IN',
-            'ta': 'ta-IN',
-            'mr': 'mr-IN',
-            'gu': 'gu-IN',
-            'kn': 'kn-IN',
-            'ml': 'ml-IN',
-            'pa': 'pa-IN',
-            'en': 'en-IN'
-        };
-        return localeMap[lang] || 'en-IN';
-    };
-
+    // Voice Manager
     const {
         voiceState,
         transcript,
-        isSpeaking,
-        isStarting,
-        startListening,
-        stopListening,
-        speakResponse,
-        cancelOutput
-    } = useVoiceManager({
-        language: getVoiceLocale(i18n.language),
-        onInputComplete: handleVoiceInput,
-        onError: handleVoiceError
-    });
+        aiResponse,
+        error: voiceError,
+        isActive: isVoiceModeActive,
+        startVoiceMode,
+        stopVoiceMode
+    } = useVoiceManager(i18n.language);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -71,27 +37,13 @@ const ChatInterface = ({ messages, setMessages }) => {
         scrollToBottom();
     }, [messages, isLoading]);
 
-    // Sync transcript to input for visibility
-    useEffect(() => {
-        if (voiceState === VoiceState.LISTENING && transcript) {
-            setInput(transcript);
-        }
-    }, [voiceState, transcript]);
-
-    const handleSend = async (e, textOverride = null, source = 'text') => {
+    const handleSend = async (e) => {
         if (e) e.preventDefault();
 
-        const currentInput = textOverride || input;
-
-        if (currentInput.trim() === '') return;
-
-        // If manual send while speaking, stop speaking
-        if (voiceState === VoiceState.SPEAKING) {
-            cancelOutput();
-        }
+        if (input.trim() === '') return;
 
         setInput('');
-        const newMessages = [...messages, { role: 'user', content: currentInput }];
+        const newMessages = [...messages, { role: 'user', content: input }];
         setMessages(newMessages);
         setIsLoading(true);
 
@@ -102,7 +54,7 @@ const ChatInterface = ({ messages, setMessages }) => {
             }));
 
             // 15s Timeout for API call to prevent infinite loading
-            const apiCall = chatWithData(currentInput, history, i18n.language);
+            const apiCall = chatWithData(input, history, i18n.language);
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error("Request timed out")), 15000)
             );
@@ -116,60 +68,35 @@ const ChatInterface = ({ messages, setMessages }) => {
                 sql: data.sql_query
             }]);
 
-            // CRITICAL: Set loading to false BEFORE speaking to avoid UI conflicts
-            setIsLoading(false);
-
-            // If source was voice or we are in live mode, speak the response
-            if (source === 'voice' || isLiveMode) {
-                // Optimize text for speech
-                let speakableText = responseText.replace(/```[\s\S]*?```/g, '');
-                speakableText = speakableText.replace(/^\|.*$/gm, '');
-                speakableText = speakableText.replace(/^[-| :]+$/gm, '');
-                speakableText = speakableText.replace(/\n+/g, ' ').trim();
-
-                console.log(`[VoiceLoop] Speaking response (${speakableText.length} chars):`, speakableText.substring(0, 50) + "...");
-
-                if (speakableText) {
-                    speakResponse(speakableText);
-                } else {
-                    console.log("[VoiceLoop] Empty speakable text, restarting listener manually");
-                    // If nothing to speak, ensure we go back to listening if in live mode
-                    if (isLiveMode) {
-                        setTimeout(() => startListening(), 500);
-                    }
-                }
-            }
-
         } catch (error) {
             console.error("Chat error:", error);
+            const errorText = t('error_processing_request') || "I'm having trouble processing your request. Please try again.";
+
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: t('error_processing_request')
+                content: errorText
             }]);
-
-            if (isLiveMode) {
-                speakResponse(t('error_processing_request'));
-            }
         } finally {
-            // Only set loading false if NOT in voice/live mode (already set above)
-            if (source !== 'voice' && !isLiveMode) {
-                setIsLoading(false);
-            }
+            setIsLoading(false);
         }
     };
 
-    const toggleLiveMode = () => {
-        if (isLiveMode) {
-            setIsLiveMode(false);
-            cancelOutput();
+    // Handle voice mode toggle
+    const handleVoiceModeToggle = async () => {
+        if (isVoiceModeActive) {
+            await stopVoiceMode();
+            setIsVoiceModalOpen(false);
         } else {
-            setIsLiveMode(true);
-            startListening();
+            setIsVoiceModalOpen(true);
+            await startVoiceMode();
         }
     };
 
-    // Derived UI states
-    const isListening = voiceState === VoiceState.LISTENING;
+    // Handle voice modal close
+    const handleVoiceModalClose = async () => {
+        await stopVoiceMode();
+        setIsVoiceModalOpen(false);
+    };
 
     return (
         <div className="flex flex-col h-full bg-background md:rounded-2xl md:shadow-xl md:border border-border overflow-hidden relative font-sans">
@@ -188,112 +115,20 @@ const ChatInterface = ({ messages, setMessages }) => {
                     </div>
                 </div>
 
-                {/* Live Mode Toggle Button */}
+                {/* Live Voice Button */}
                 <button
-                    onClick={toggleLiveMode}
+                    onClick={handleVoiceModeToggle}
                     className={cn(
-                        "p-2.5 rounded-full transition-all active:scale-95",
-                        isLiveMode
-                            ? "bg-red-500/10 text-red-500 animate-pulse"
-                            : "bg-primary/10 text-primary hover:bg-primary/20"
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg",
+                        isVoiceModeActive
+                            ? "bg-destructive text-destructive-foreground animate-pulse"
+                            : "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
                     )}
-                    title={t('live_mode')}
+                    title={isVoiceModeActive ? t('tap_to_stop_voice') : t('start_voice_mode')}
                 >
-                    {isLiveMode ? <X size={20} /> : <Mic size={20} />}
+                    {isVoiceModeActive ? <X size={20} /> : <Mic size={20} />}
                 </button>
             </div>
-
-            {/* Live Mode Overlay */}
-            {isLiveMode && (
-                <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center transition-all duration-500 animate-in fade-in">
-
-                    {/* Error Toast */}
-                    {errorMessage && (
-                        <div className="absolute top-24 left-4 right-4 z-20 bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-xl shadow-lg animate-in slide-in-from-top-4 duration-300">
-                            <p className="text-sm font-medium">{errorMessage}</p>
-                        </div>
-                    )}
-
-                    {/* Top Controls */}
-                    <div className="absolute top-0 left-0 right-0 p-6 pt-safe flex justify-between items-center z-10">
-                        <div className="flex items-center gap-2 text-foreground/70">
-                            <Sparkles size={18} className="text-primary" />
-                            <span className="text-sm font-medium tracking-wide">KiranaAI Live</span>
-                        </div>
-                        <button
-                            onClick={toggleLiveMode}
-                            className="p-3 bg-muted hover:bg-muted/80 rounded-full text-foreground transition-colors"
-                        >
-                            <X size={24} />
-                        </button>
-                    </div>
-
-                    {/* Visualizer */}
-                    <div className="flex-1 flex flex-col items-center justify-center w-full relative px-6">
-
-                        {/* Status Text */}
-                        <div className="absolute top-1/4 text-center space-y-2 animate-in slide-in-from-bottom-4 duration-700 w-full">
-                            <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
-                                {isStarting ? (t('starting') || "Starting...") :
-                                    voiceState === VoiceState.PROCESSING || isLoading ? t('thinking') :
-                                        voiceState === VoiceState.SPEAKING ? t('speaking') :
-                                            voiceState === VoiceState.LISTENING ? t('listening') :
-                                                (t('tap_to_resume') === 'tap_to_resume' ? "Tap to Resume" : t('tap_to_resume'))}
-                            </h2>
-                            {/* Show live transcript or response preview */}
-                            <p className="text-muted-foreground text-lg max-w-md mx-auto line-clamp-3">
-                                {voiceState === VoiceState.LISTENING ? transcript :
-                                    isLoading ? "..." :
-                                        (messages[messages.length - 1]?.role === 'assistant' ? messages[messages.length - 1].content : "")}
-                            </p>
-                        </div>
-
-                        {/* Orb Animation */}
-                        <div className="relative w-64 h-64 flex items-center justify-center mt-12">
-                            <div
-                                className={cn(
-                                    "absolute w-32 h-32 rounded-full blur-3xl transition-all duration-300",
-                                    voiceState === VoiceState.LISTENING ? "bg-primary/60 scale-110" : "bg-secondary/40",
-                                    (voiceState === VoiceState.PROCESSING || isLoading) && "bg-purple-500/60 animate-pulse",
-                                    voiceState === VoiceState.SPEAKING && "bg-green-500/60 scale-125"
-                                )}
-                            />
-                            <div className={cn(
-                                "absolute inset-0 border-2 rounded-full opacity-20 transition-all duration-1000",
-                                voiceState === VoiceState.LISTENING ? "border-primary animate-ping-slow" : "border-muted-foreground scale-90"
-                            )} />
-
-                            <button
-                                onClick={() => {
-                                    if (voiceState === VoiceState.IDLE) startListening();
-                                }}
-                                disabled={voiceState !== VoiceState.IDLE}
-                                className={cn(
-                                    "relative z-10 w-24 h-24 rounded-full flex items-center justify-center transition-transform duration-500 bg-background/50 backdrop-blur-sm border border-white/10 outline-none",
-                                    voiceState === VoiceState.LISTENING ? "scale-110" : "scale-100 cursor-pointer hover:scale-105"
-                                )}>
-                                {(voiceState === VoiceState.PROCESSING || isLoading || isStarting) ? (
-                                    <Loader2 size={48} className="text-primary animate-spin" />
-                                ) : voiceState === VoiceState.SPEAKING ? (
-                                    <Volume2 size={48} className="text-green-500 animate-pulse" />
-                                ) : (
-                                    <Mic size={48} className={cn("text-foreground", isListening ? "text-primary" : "text-muted-foreground")} />
-                                )}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Bottom Controls */}
-                    <div className="p-8 w-full flex justify-center pb-safe">
-                        <button
-                            onClick={toggleLiveMode}
-                            className="px-8 py-3 rounded-full bg-destructive/10 text-destructive border border-destructive/20 font-medium hover:bg-destructive/20 transition-colors"
-                        >
-                            {t('end_session')}
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 pt-[calc(4rem+env(safe-area-inset-top))] space-y-6 scroll-smooth no-scrollbar">
@@ -412,10 +247,18 @@ const ChatInterface = ({ messages, setMessages }) => {
                     >
                         <Send size={20} />
                     </button>
-
-
                 </form>
             </div>
+
+            {/* Voice Mode Modal */}
+            <VoiceModeModal
+                isOpen={isVoiceModalOpen}
+                onClose={handleVoiceModalClose}
+                voiceState={voiceState}
+                transcript={transcript}
+                aiResponse={aiResponse}
+                error={voiceError}
+            />
         </div>
     );
 };

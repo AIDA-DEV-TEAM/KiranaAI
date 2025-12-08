@@ -48,7 +48,17 @@ const resources = {
             "prices": "Prices",
             "reorder": "Reorder",
             "tap_to_resume": "Tap to Resume",
-            "starting": "Starting..."
+            "starting": "Starting...",
+            "speaking": "Speaking...",
+            "tap_to_stop_voice": "Tap to Stop",
+            "voice_mode_active": "Voice Mode Active",
+            "no_speech_detected": "No speech detected",
+            "you": "You",
+            "assistant": "Assistant",
+            "speak_now_hint": "Speak now, I'm listening...",
+            "processing_hint": "Processing your request...",
+            "speaking_hint": "Tap the button below to interrupt",
+            "start_voice_mode": "Start Voice Mode"
         }
     },
     hi: {
@@ -95,7 +105,16 @@ const resources = {
             "alerts": "चेतावनी",
             "catalog": "सूची",
             "prices": "कीमतें",
-            "reorder": "पुनः ऑर्डर करें"
+            "reorder": "पुनः ऑर्डर करें",
+            "speaking": "बोल रहा हूँ...",
+            "tap_to_stop_voice": "रोकने के लिए टैप करें",
+            "voice_mode_active": "वॉयस मोड सक्रिय",
+            "no_speech_detected": "कोई आवाज़ नहीं सुनी गई",
+            "you": "आप",
+            "assistant": "सहायक",
+            "speak_now_hint": "अब बोलें, मैं सुन रहा हूँ...",
+            "processing_hint": "आपके अनुरोध को संसाधित कर रहा हूँ...",
+            "speaking_hint": "रोकने के लिए नीचे बटन टैप करें"
         }
     },
     bn: {
@@ -142,7 +161,16 @@ const resources = {
             "alerts": "সতর্কতা",
             "catalog": "ক্যাটালগ",
             "prices": "দাম",
-            "reorder": "পুনরায় অর্ডার"
+            "reorder": "পুনরায় অর্ডার",
+            "speaking": "বলছি...",
+            "tap_to_stop_voice": "থামাতে ট্যাপ করুন",
+            "voice_mode_active": "ভয়েস মোড সক্রিয়",
+            "no_speech_detected": "কোনো বক্তৃতা শনাক্ত করা হয়নি",
+            "you": "আপনি",
+            "assistant": "সহকারী",
+            "speak_now_hint": "এখন বলুন, আমি শুনছি...",
+            "processing_hint": "আপনার অনুরোধ প্রক্রিয়া করছি...",
+            "speaking_hint": "বাধা দিতে নিচের বোতাম ট্যাপ করুন"
         }
     },
     te: {
@@ -189,7 +217,16 @@ const resources = {
             "alerts": "హెచ్చరికలు",
             "catalog": "జాబితా",
             "prices": "ధరలు",
-            "reorder": "మళ్లీ ఆర్డర్ చేయండి"
+            "reorder": "మళ్లీ ఆర్డర్ చేయండి",
+            "speaking": "మాట్లాడుతోంది...",
+            "tap_to_stop_voice": "ఆపడానికి ట్యాప్ చేయండి",
+            "voice_mode_active": "వాయిస్ మోడ్ యాక్టివ్",
+            "no_speech_detected": "ప్రసంగం కనుగొనబడలేదు",
+            "you": "మీరు",
+            "assistant": "సహాయకుడు",
+            "speak_now_hint": "ఇప్పుడు మాట్లాడండి, నేను వింటున్నాను...",
+            "processing_hint": "మీ అభ్యర్థనను ప్రాసెస్ చేస్తోంది...",
+            "speaking_hint": "అంతరాయం కలిగించడానికి దిగువ బటన్ నొక్కండి"
         }
     },
     ta: {
@@ -236,7 +273,16 @@ const resources = {
             "alerts": "எச்சரிக்கைகள்",
             "catalog": "பட்டியல்",
             "prices": "விலைகள்",
-            "reorder": "மீண்டும் ஆர்டர்"
+            "reorder": "மீண்டும் ஆர்டர்",
+            "speaking": "பேசுகிறது...",
+            "tap_to_stop_voice": "நிறுத்த தட்டவும்",
+            "voice_mode_active": "குரல் பயன்முறை செயலில்",
+            "no_speech_detected": "பேச்சு கண்டறியப்படவில்லை",
+            "you": "நீங்கள்",
+            "assistant": "உதவியாளர்",
+            "speak_now_hint": "இப்போது பேசுங்கள், நான் கேட்கிறேன்...",
+            "processing_hint": "உங்கள் கோரிக்கை செயல்படுத்தப்படுகிறது...",
+            "speaking_hint": "குறுக்கிட கீழே உள்ள பொத்தானை தட்டவும்"
         }
     },
     mr: {
@@ -283,7 +329,16 @@ const resources = {
             "alerts": "इशारे",
             "catalog": "कॅटलॉग",
             "prices": "किंमती",
-            "reorder": "पुन्हा ऑर्डर करा"
+            "reorder": "पुन्हा ऑर्डर करा",
+            "speaking": "बोलत आहे...",
+            "tap_to_stop_voice": "थांबवण्यासाठी टॅप करा",
+            "voice_mode_active": "व्हॉइस मोड सक्रिय",
+            "no_speech_detected": "कोणतेही भाषण आढळले नाही",
+            "you": "तुम्ही",
+            "assistant": "सहाय्यक",
+            "speak_now_hint": "आता बोला, मी ऐकत आहे...",
+            "processing_hint": "तुमची विनंती प्रक्रिया करत आहे...",
+            "speaking_hint": "व्यत्यय आणण्यासाठी खालील बटण टॅप करा"
         }
     },
     gu: {
@@ -330,7 +385,16 @@ const resources = {
             "alerts": "ચેતવણીઓ",
             "catalog": "કેટલોગ",
             "prices": "કિંમતો",
-            "reorder": "ફરીથી ઓર્ડર કરો"
+            "reorder": "ફરીથી ઓર્ડર કરો",
+            "speaking": "બોલી રહ્યો છું...",
+            "tap_to_stop_voice": "બંધ કરવા ટેપ કરો",
+            "voice_mode_active": "વૉઇસ મોડ સક્રિય",
+            "no_speech_detected": "કોઈ ભાષણ મળ્યું નથી",
+            "you": "તમે",
+            "assistant": "સહાયક",
+            "speak_now_hint": "હવે બોલો, હું સાંભળી રહ્યો છું...",
+            "processing_hint": "તમારી વિનંતી પર કામ કરી રહ્યો છું...",
+            "speaking_hint": "વિક્ષેપ માટે નીચે બટન ટેપ કરો"
         }
     },
     kn: {
@@ -377,7 +441,16 @@ const resources = {
             "alerts": "ಎಚ್ಚರಿಕೆಗಳು",
             "catalog": "ಕ್ಯಾಟಲಾಗ್",
             "prices": "ಬೆಲೆಗಳು",
-            "reorder": "ಮರುಕ್ರಮಗೊಳಿಸಿ"
+            "reorder": "ಮರುಕ್ರಮಗೊಳಿಸಿ",
+            "speaking": "ಮಾತನಾಡುತ್ತಿದೆ...",
+            "tap_to_stop_voice": "ನಿಲ್ಲಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ",
+            "voice_mode_active": "ವಾಯ್ಸ್ ಮೋಡ್ ಸಕ್ರಿಯ",
+            "no_speech_detected": "ಯಾವುದೇ ಮಾತು ಪತ್ತೆಯಾಗಲಿಲ್ಲ",
+            "you": "ನೀವು",
+            "assistant": "ಸಹಾಯಕ",
+            "speak_now_hint": "ಈಗ ಮಾತನಾಡಿ, ನಾನು ಕೇಳುತ್ತಿದ್ದೇನೆ...",
+            "processing_hint": "ನಿಮ್ಮ ವಿನಂತಿಯನ್ನು ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲಾಗುತ್ತಿದೆ...",
+            "speaking_hint": "ಅಡಚಣೆ ಮಾಡಲು ಕೆಳಗಿನ ಗುಂಡಿ ಒತ್ತಿರಿ"
         }
     },
     ml: {
@@ -424,7 +497,16 @@ const resources = {
             "alerts": "അറിയിപ്പുകൾ",
             "catalog": "കാറ്റലോഗ്",
             "prices": "വിലകൾ",
-            "reorder": "വീണ്ടും ഓർഡർ ചെയ്യുക"
+            "reorder": "വീണ്ടും ഓർഡർ ചെയ്യുക",
+            "speaking": "സംസാരിക്കുന്നു...",
+            "tap_to_stop_voice": "നിർത്താൻ ടാപ്പ് ചെയ്യുക",
+            "voice_mode_active": "വോയ്‌സ് മോഡ് സജീവം",
+            "no_speech_detected": "ഒരു സംസാരവും കണ്ടെത്തിയില്ല",
+            "you": "നിങ്ങൾ",
+            "assistant": "സഹായി",
+            "speak_now_hint": "ഇപ്പോൾ സംസാരിക്കൂ, ഞാൻ കേൾക്കുന്നു...",
+            "processing_hint": "നിങ്ങളുടെ അഭ്യർത്ഥന പ്രോസസ്സ് ചെയ്യുന്നു...",
+            "speaking_hint": "തടസ്സപ്പെടുത്താൻ താഴത്തെ ബട്ടൺ ടാപ്പ് ചെയ്യുക"
         }
     },
     pa: {
@@ -471,7 +553,16 @@ const resources = {
             "alerts": "ਚੇਤਾਵਨੀਆਂ",
             "catalog": "ਕੈਟਾਲਾਗ",
             "prices": "ਕੀਮਤਾਂ",
-            "reorder": "ਮੁੜ-ਆਰਡਰ"
+            "reorder": "ਮੁੜ-ਆਰਡਰ",
+            "speaking": "ਬੋਲ ਰਿਹਾ ਹੈ...",
+            "tap_to_stop_voice": "ਰੋਕਣ ਲਈ ਟੈਪ ਕਰੋ",
+            "voice_mode_active": "ਆਵਾਜ਼ ਮੋਡ ਸਰਗਰਮ",
+            "no_speech_detected": "ਕੋਈ ਬੋਲੀ ਨਹੀਂ ਮਿਲੀ",
+            "you": "ਤੁਸੀਂ",
+            "assistant": "ਸਹਾਇਕ",
+            "speak_now_hint": "ਹੁਣ ਬੋਲੋ, ਮੈਂ ਸੁਣ ਰਿਹਾ ਹਾਂ...",
+            "processing_hint": "ਤੁਹਾਡੀ ਬੇਨਤੀ ਦੀ ਪ੍ਰਕਿਰਿਆ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ...",
+            "speaking_hint": "ਰੋਕਣ ਲਈ ਹੇਠਾਂ ਬਟਨ ਨੂੰ ਟੈਪ ਕਰੋ"
         }
     }
 };
