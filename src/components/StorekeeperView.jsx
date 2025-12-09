@@ -221,9 +221,33 @@ const StorekeeperView = () => {
     };
 
     const handleReorderChange = (productId, delta) => {
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        const maxStock = product.max_stock || 50;
+        const currentStock = product.stock;
+        const maxAddable = Math.max(0, maxStock - currentStock);
+
         setReorderQuantities(prev => {
-            const currentVal = prev[productId] ?? 10;
-            const newVal = Math.max(1, currentVal + delta);
+            const shortfall = maxStock - currentStock;
+            // Default: Try 10, but at least shortfall, BUT capped at maxAddable (which is shortfall anyway?)
+            // Wait: shortfall = max - current. maxAddable = max - current.
+            // So default = Math.min(maxAddable, Math.max(10, shortfall)); 
+            // Effectively, if shortfall > 10, use shortfall. If shortfall < 10, use 10 but cap at maxAddable (which IS shortfall).
+            // So really, sticking to 'shortfall' (filling to max) is the only logical default if we can't exceed max.
+            // If I want to suggest 10 when shortfall is 2, I can't, because 2+10 > max? 
+            // User said "user shouldn't able to restock the more than max quantity".
+            // If I have 48/50. Shortfall 2. I can only add 2.
+            // So default MUST be 'shortfall'.
+
+            const defaultQty = shortfall;
+
+            const currentVal = prev[productId] ?? defaultQty;
+            const newVal = currentVal + delta;
+
+            if (newVal < 1) return prev;
+            if (newVal > maxAddable) return prev;
+
             return { ...prev, [productId]: newVal };
         });
     };
@@ -478,7 +502,8 @@ const StorekeeperView = () => {
                                 products.filter(p => p.stock <= ((p.max_stock || 50) * 0.5)).map(item => {
                                     const maxStock = item.max_stock || 50;
                                     const shortfall = maxStock - item.stock;
-                                    const restockQty = reorderQuantities[item.id] ?? Math.max(10, shortfall);
+                                    const maxAddable = maxStock - item.stock;
+                                    const restockQty = reorderQuantities[item.id] ?? shortfall;
 
                                     return (
                                         <div key={item.id} className={cn(
@@ -508,7 +533,13 @@ const StorekeeperView = () => {
                                                     </span>
                                                     <button
                                                         onClick={() => handleReorderChange(item.id, 1)}
-                                                        className="w-8 h-8 flex items-center justify-center bg-primary text-primary-foreground rounded-md shadow-sm hover:bg-primary/90 active:scale-95 transition-all"
+                                                        disabled={restockQty >= maxAddable}
+                                                        className={cn(
+                                                            "w-8 h-8 flex items-center justify-center rounded-md shadow-sm transition-all",
+                                                            restockQty >= maxAddable
+                                                                ? "bg-muted text-muted-foreground cursor-not-allowed"
+                                                                : "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+                                                        )}
                                                     >
                                                         <Plus size={16} strokeWidth={3} />
                                                     </button>
