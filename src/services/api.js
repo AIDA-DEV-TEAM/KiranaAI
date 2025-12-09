@@ -26,9 +26,29 @@ export const getProducts = async () => {
     return response.data;
 };
 
+// Demo Mode: Fetch from local CSV
 export const getMandiPrices = async () => {
-    const response = await api.get('/mandi/prices');
-    return response.data;
+    try {
+        const response = await fetch('/demo_mandi_prices.csv');
+        const text = await response.text();
+        const rows = text.split('\n').filter(row => row.trim() !== '');
+        const headers = rows[0].split(',').map(h => h.trim());
+
+        const prices = rows.slice(1).map(row => {
+            const values = row.split(',');
+            const entry = {};
+            headers.forEach((header, index) => {
+                entry[header] = values[index]?.trim();
+            });
+            return entry;
+        });
+
+        return { prices };
+    } catch (error) {
+        console.warn("Failed to load demo prices, falling back to API", error);
+        const response = await api.get('/mandi/prices');
+        return response.data;
+    }
 };
 
 export const uploadVisionImage = async (file, type = 'ocr') => {
