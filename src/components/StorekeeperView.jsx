@@ -35,7 +35,7 @@ import {
     Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { addProduct, updateProduct } from '../services/api';
+import { addProduct, updateProduct, addSale } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { useAppData } from '../context/AppDataContext';
 
@@ -66,7 +66,7 @@ const StorekeeperView = () => {
     const [activeTab, setActiveTab] = useState('catalog');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
-    const { inventory, mandiPrices, loadingInventory, loadingMandi, refreshInventory, addToCart } = useAppData();
+    const { inventory, mandiPrices, loadingInventory, loadingMandi, refreshInventory, refreshSales, addToCart } = useAppData();
     const [products, setProducts] = useState([]);
     const [marketPrices, setMarketPrices] = useState([]);
     const { t, i18n } = useTranslation();
@@ -79,6 +79,8 @@ const StorekeeperView = () => {
     // Stock Update State
     const [stockUpdates, setStockUpdates] = useState({}); // { [id]: newStock }
     const [stockLoading, setStockLoading] = useState({}); // { [id]: boolean }
+    const [reorderQuantities, setReorderQuantities] = useState({});
+    const [reorderLoading, setReorderLoading] = useState({});
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -162,7 +164,14 @@ const StorekeeperView = () => {
     const handleStockChange = (productId, currentStock, delta) => {
         setStockUpdates(prev => {
             const currentVal = prev[productId] ?? currentStock;
-            const newVal = Math.max(0, currentVal + delta);
+            const newVal = currentVal + delta;
+
+            // Constraint 1: Cannot go below 0
+            if (newVal < 0) return prev;
+
+            // Constraint 2: Cannot exceed ORIGINAL stock (currentStock passed from UI is the DB value)
+            if (newVal > currentStock) return prev;
+
             if (newVal === currentStock) {
                 const { [productId]: _, ...rest } = prev;
                 return rest;
@@ -175,21 +184,68 @@ const StorekeeperView = () => {
         const newStock = stockUpdates[product.id];
         if (newStock === undefined) return;
 
+        // Calculate delta: original - new
+        const quantitySold = product.stock - newStock;
+
+        if (quantitySold <= 0) {
+            alert("To restock items, please use the Reorder tab.");
+            setStockUpdates(prev => {
+                const { [product.id]: _, ...rest } = prev;
+                return rest;
+            });
+            return;
+        }
+
         setStockLoading(prev => ({ ...prev, [product.id]: true }));
         try {
-            await updateProduct(product.id, { ...product, stock: newStock });
-            // Optimistic update locally to avoid flicker
+            // Call Sales API to record sale + deduct stock
+            await addSale({
+                product_id: product.id,
+                quantity: quantitySold
+            });
+
+            // Optimistic update locally
             setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: newStock } : p));
             setStockUpdates(prev => {
                 const { [product.id]: _, ...rest } = prev;
                 return rest;
             });
             await refreshInventory(true);
+            await refreshSales(true);
         } catch (error) {
             console.error("Failed to update stock", error);
-            alert("Failed to update stock");
+            alert("Failed to record sale");
         } finally {
             setStockLoading(prev => ({ ...prev, [product.id]: false }));
+        }
+    };
+
+    const handleReorderChange = (productId, delta) => {
+        setReorderQuantities(prev => {
+            const currentVal = prev[productId] ?? 10;
+            const newVal = Math.max(1, currentVal + delta);
+            return { ...prev, [productId]: newVal };
+        });
+    };
+
+    const confirmRestock = async (product) => {
+        const qtyToAdd = reorderQuantities[product.id] ?? 10;
+        setReorderLoading(prev => ({ ...prev, [product.id]: true }));
+        try {
+            const newStock = product.stock + qtyToAdd;
+            await updateProduct(product.id, { ...product, stock: newStock });
+
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: newStock } : p));
+            setReorderQuantities(prev => {
+                const { [product.id]: _, ...rest } = prev;
+                return rest;
+            });
+            await refreshInventory(true);
+        } catch (error) {
+            console.error("Failed to restock", error);
+            alert("Failed to restock");
+        } finally {
+            setReorderLoading(prev => ({ ...prev, [product.id]: false }));
         }
     };
 
@@ -371,7 +427,13 @@ const StorekeeperView = () => {
                                                         </span>
                                                         <button
                                                             onClick={() => handleStockChange(product.id, product.stock, 1)}
-                                                            className="w-8 h-8 flex items-center justify-center bg-primary text-primary-foreground rounded-md shadow-sm hover:bg-primary/90 active:scale-95 transition-all"
+                                                            disabled={(stockUpdates[product.id] ?? product.stock) >= product.stock}
+                                                            className={cn(
+                                                                "w-8 h-8 flex items-center justify-center rounded-md shadow-sm transition-all",
+                                                                (stockUpdates[product.id] ?? product.stock) >= product.stock
+                                                                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                                                                    : "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+                                                            )}
                                                         >
                                                             <Plus size={16} strokeWidth={3} />
                                                         </button>
@@ -387,7 +449,7 @@ const StorekeeperView = () => {
                                                         className="text-xs bg-black dark:bg-white text-white dark:text-black font-bold px-3 py-1.5 rounded-lg shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
                                                     >
                                                         {stockLoading[product.id] ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                                                        {t('update_stock')}
+                                                        {t('confirm_sale') || "Confirm Sale"}
                                                     </button>
                                                 </div>
                                             )}
@@ -416,25 +478,51 @@ const StorekeeperView = () => {
                                 products.filter(p => p.stock <= ((p.max_stock || 50) * 0.5)).map(item => {
                                     const maxStock = item.max_stock || 50;
                                     const shortfall = maxStock - item.stock;
+                                    const restockQty = reorderQuantities[item.id] ?? Math.max(10, shortfall);
+
                                     return (
                                         <div key={item.id} className={cn(
-                                            "bg-card p-4 rounded-2xl border-l-4 shadow-sm flex justify-between items-center",
+                                            "bg-card p-4 rounded-2xl border-l-4 shadow-sm flex flex-col gap-3",
                                             item.stock < 5 ? "border-l-red-500" : "border-l-orange-500"
                                         )}>
-                                            <div>
-                                                <h3 className="font-semibold text-foreground">{item.name}</h3>
-                                                <div className="flex gap-3 mt-1 text-sm">
-                                                    <p className="text-muted-foreground">Current: <span className="font-bold text-foreground">{item.stock}</span></p>
-                                                    <p className="text-muted-foreground">Target: {maxStock}</p>
-                                                    <p className="text-red-500 font-medium">Shortfall: {shortfall}</p>
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-semibold text-foreground">{item.name}</h3>
+                                                    <div className="flex gap-3 mt-1 text-sm">
+                                                        <p className="text-muted-foreground">Current: <span className="font-bold text-foreground">{item.stock}</span></p>
+                                                        <p className="text-muted-foreground">Target: {maxStock}</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => handleEditClick(item)}
-                                                className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-xl shadow-sm shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all"
-                                            >
-                                                {t('restock')}
-                                            </button>
+
+                                            <div className="flex items-center justify-between border-t border-border pt-3">
+                                                <div className="flex items-center gap-3 bg-muted/30 rounded-lg p-1">
+                                                    <button
+                                                        onClick={() => handleReorderChange(item.id, -1)}
+                                                        className="w-8 h-8 flex items-center justify-center bg-background rounded-md shadow-sm border border-border text-foreground hover:bg-muted active:scale-95 transition-all"
+                                                    >
+                                                        <div className="w-3 h-0.5 bg-current rounded-full" />
+                                                    </button>
+                                                    <span className="text-lg font-bold text-foreground min-w-[2rem] text-center">
+                                                        {restockQty}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleReorderChange(item.id, 1)}
+                                                        className="w-8 h-8 flex items-center justify-center bg-primary text-primary-foreground rounded-md shadow-sm hover:bg-primary/90 active:scale-95 transition-all"
+                                                    >
+                                                        <Plus size={16} strokeWidth={3} />
+                                                    </button>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => confirmRestock(item)}
+                                                    disabled={reorderLoading[item.id]}
+                                                    className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-xl shadow-sm shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all flex items-center gap-2"
+                                                >
+                                                    {reorderLoading[item.id] ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                                                    {t('restock')}
+                                                </button>
+                                            </div>
                                         </div>
                                     );
                                 })

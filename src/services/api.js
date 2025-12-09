@@ -60,3 +60,8 @@ export const updateShelfLocations = async (items) => {
     const response = await api.post('/inventory/shelf/bulk', items);
     return response.data;
 };
+
+export const addSale = async (sale) => {
+    const response = await api.post('/sales/', sale);
+    return response.data;
+};
