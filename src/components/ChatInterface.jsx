@@ -216,13 +216,13 @@ const ChatInterface = () => {
             {/* Input Area */}
             <div className="p-3 bg-background/80 backdrop-blur-xl border-t border-border sticky bottom-0 z-20 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] md:pb-4">
                 {/* Voice Status Indicator */}
-                {(isVoiceModeActive || isLoading) && (
+                {/* Voice Status Indicator - Only show during active Voice States */}
+                {(voiceState === 'listening' || voiceState === 'thinking') && (
                     <div className="mb-2 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-2">
                         <div className={cn(
                             "px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm border flex items-center gap-2",
                             voiceState === 'listening' ? "bg-red-500/10 text-red-600 border-red-200" :
-                                (voiceState === 'thinking' || isLoading) ? "bg-blue-500/10 text-blue-600 border-blue-200" :
-                                    "bg-muted text-muted-foreground border-border"
+                                "bg-blue-500/10 text-blue-600 border-blue-200"
                         )}>
                             {voiceState === 'listening' && (
                                 <>
@@ -233,7 +233,7 @@ const ChatInterface = () => {
                                     Listening...
                                 </>
                             )}
-                            {(voiceState === 'thinking' || isLoading) && (
+                            {voiceState === 'thinking' && (
                                 <>
                                     <Loader2 className="w-3 h-3 animate-spin" />
                                     Processing...
