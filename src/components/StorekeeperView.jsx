@@ -253,10 +253,17 @@ const StorekeeperView = () => {
     };
 
     const confirmRestock = async (product) => {
-        const qtyToAdd = reorderQuantities[product.id] ?? 10;
+        const maxStock = product.max_stock || 50;
+        const shortfall = Math.max(0, maxStock - product.stock);
+        const qtyToAdd = reorderQuantities[product.id] ?? shortfall;
+
         setReorderLoading(prev => ({ ...prev, [product.id]: true }));
         try {
             const newStock = product.stock + qtyToAdd;
+            // Safety check: ensure we don't exceed max unless explicitly intended (though reorder logic usually aims for max)
+            // For now, trust the qtyToAdd but we could clamp it: Math.min(newStock, maxStock) if strictly desired.
+            // Given the requirement "New_Stock = Current + Added", we stick to that formula.
+
             await updateProduct(product.id, { ...product, stock: newStock });
 
             setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: newStock } : p));
