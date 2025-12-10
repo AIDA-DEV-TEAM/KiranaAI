@@ -136,10 +136,28 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
         }
     }, [currentLanguage]);
 
+    // Watchdog: If stuck in SPEAKING for too long (> 10s), force reset
+    useEffect(() => {
+        let watchdogTimer;
+        if (voiceState === VOICE_STATES.SPEAKING) {
+            watchdogTimer = setTimeout(async () => {
+                console.warn('[VoiceManager] Watchdog: Stuck in SPEAKING, forcing reset');
+                isSpeakingRef.current = false;
+                setVoiceState(VOICE_STATES.IDLE);
+
+                // Explicitly check ref to ensure we want to be active
+                if (isActive) {
+                    console.log('[VoiceManager] Watchdog restarting listener...');
+                    await startListening();
+                }
+            }, 10000);
+        }
+        return () => clearTimeout(watchdogTimer);
+    }, [voiceState, isActive, startListening]);
+
     // Speak the AI response using TTS
     const speakResponse = useCallback(async (text) => {
         if (!text || text.trim() === '') {
-            // If no response, restart listening
             if (isActive) {
                 await startListening();
             }
@@ -149,9 +167,14 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
         setVoiceState(VOICE_STATES.SPEAKING);
         isSpeakingRef.current = true;
 
+        // Estimate duration: ~150 words per minute + 0.5s buffer
+        const wordCount = text.split(/\s+/).length;
+        const estimatedDurationMs = Math.max(1000, (wordCount / 150) * 60 * 1000 + 500);
+
         try {
             const ttsLang = getTTSLanguage();
 
+            // Await the native completion event (The "Event Chain" fix)
             await TextToSpeech.speak({
                 text: text,
                 lang: ttsLang,
@@ -161,24 +184,27 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                 category: TTS_CONFIG.category
             });
 
-            isSpeakingRef.current = false;
+            console.log('[VoiceManager] TTS Promise resolved - Speech finished');
 
-            // Auto-rebound: Start listening again after speaking
-            if (isActive) {
+            // Only restart if we are still effectively speaking (not interrupted/stopped/watchdogged)
+            if (isSpeakingRef.current && isActive) {
+                console.log('[VoiceManager] Immediate restart of listening');
+                isSpeakingRef.current = false;
+                setVoiceState(VOICE_STATES.IDLE);
                 await startListening();
             }
 
         } catch (err) {
-            console.error('Error speaking response:', err);
-            isSpeakingRef.current = false;
-            setError('Failed to speak response');
+            console.error('[VoiceManager] Error during speech:', err);
 
-            // Still try to restart listening
-            if (isActive) {
+            // If it was just an interruption/error, ensure we recover
+            if (isActive && isSpeakingRef.current) {
+                isSpeakingRef.current = false;
+                setVoiceState(VOICE_STATES.IDLE);
                 await startListening();
             }
         }
-    }, [getTTSLanguage, isActive]);
+    }, [getTTSLanguage, isActive, startListening]);
 
     // Start listening for speech input
     const startListening = useCallback(async () => {
@@ -361,13 +387,28 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
     // Stop voice mode
     const stopVoiceMode = useCallback(async () => {
+        console.log('[VoiceManager] Stopping Voice Mode');
         setIsActive(false);
         clearTimers();
-        await stopListening();
-        await stopSpeaking();
+
+        // Stop audio immediately
+        try {
+            await TextToSpeech.stop();
+        } catch (e) {
+            console.warn("Error stopping TTS:", e);
+        }
+
+        // Stop listening
+        try {
+            await stopListening();
+        } catch (e) {
+            console.warn("Error stopping listening:", e);
+        }
 
         // Remove all listeners
-        await SpeechRecognition.removeAllListeners();
+        try {
+            await SpeechRecognition.removeAllListeners();
+        } catch (e) { }
 
         setVoiceState(VOICE_STATES.IDLE);
         setTranscript('');
