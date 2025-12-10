@@ -305,6 +305,11 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
                     silenceTimerRef.current = setTimeout(async () => {
                         console.log('[VoiceManager] Silence detected, processing:', interimText);
+                        // Immediate visual feedback
+                        if (interimText && interimText.trim().length > 3) {
+                            setVoiceState(VOICE_STATES.THINKING);
+                        }
+
                         // Process the transcript after silence detected
                         // Only process if we have meaningful text (more than 3 characters)
                         if (interimText && interimText.trim().length > 3) {
@@ -407,10 +412,11 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             isProcessingRef.current = false;
 
             // Only restart if we are still effectively speaking (not interrupted/stopped/watchdogged)
-            if (isSpeakingRef.current && isActiveRef.current) {
+            // Rely primarily on isActiveRef to ensure loop continues
+            if (isActiveRef.current) {
                 console.log('[VoiceManager] Immediate restart of listening');
                 isSpeakingRef.current = false;
-                setVoiceState(VOICE_STATES.IDLE);
+                // setVoiceState(VOICE_STATES.IDLE); // Skip IDLE to avoid flicker
                 if (startListeningRef.current) {
                     await startListeningRef.current();
                 }
