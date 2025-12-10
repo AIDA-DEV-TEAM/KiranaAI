@@ -155,56 +155,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
         return () => clearTimeout(watchdogTimer);
     }, [voiceState, isActive, startListening]);
 
-    // Speak the AI response using TTS
-    const speakResponse = useCallback(async (text) => {
-        if (!text || text.trim() === '') {
-            if (isActive) {
-                await startListening();
-            }
-            return;
-        }
 
-        setVoiceState(VOICE_STATES.SPEAKING);
-        isSpeakingRef.current = true;
-
-        // Estimate duration: ~150 words per minute + 0.5s buffer
-        const wordCount = text.split(/\s+/).length;
-        const estimatedDurationMs = Math.max(1000, (wordCount / 150) * 60 * 1000 + 500);
-
-        try {
-            const ttsLang = getTTSLanguage();
-
-            // Await the native completion event (The "Event Chain" fix)
-            await TextToSpeech.speak({
-                text: text,
-                lang: ttsLang,
-                rate: TTS_CONFIG.rate,
-                pitch: TTS_CONFIG.pitch,
-                volume: TTS_CONFIG.volume,
-                category: TTS_CONFIG.category
-            });
-
-            console.log('[VoiceManager] TTS Promise resolved - Speech finished');
-
-            // Only restart if we are still effectively speaking (not interrupted/stopped/watchdogged)
-            if (isSpeakingRef.current && isActive) {
-                console.log('[VoiceManager] Immediate restart of listening');
-                isSpeakingRef.current = false;
-                setVoiceState(VOICE_STATES.IDLE);
-                await startListening();
-            }
-
-        } catch (err) {
-            console.error('[VoiceManager] Error during speech:', err);
-
-            // If it was just an interruption/error, ensure we recover
-            if (isActive && isSpeakingRef.current) {
-                isSpeakingRef.current = false;
-                setVoiceState(VOICE_STATES.IDLE);
-                await startListening();
-            }
-        }
-    }, [getTTSLanguage, isActive, startListening]);
 
     // Start listening for speech input
     const startListening = useCallback(async () => {
@@ -376,6 +327,57 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             setIsActive(false);
         }
     }, [getTTSLanguage, processTranscript, stopListening, clearTimers]);
+
+    // Speak the AI response using TTS
+    const speakResponse = useCallback(async (text) => {
+        if (!text || text.trim() === '') {
+            if (isActive) {
+                await startListening();
+            }
+            return;
+        }
+
+        setVoiceState(VOICE_STATES.SPEAKING);
+        isSpeakingRef.current = true;
+
+        // Estimate duration: ~150 words per minute + 0.5s buffer
+        const wordCount = text.split(/\s+/).length;
+        const estimatedDurationMs = Math.max(1000, (wordCount / 150) * 60 * 1000 + 500);
+
+        try {
+            const ttsLang = getTTSLanguage();
+
+            // Await the native completion event (The "Event Chain" fix)
+            await TextToSpeech.speak({
+                text: text,
+                lang: ttsLang,
+                rate: TTS_CONFIG.rate,
+                pitch: TTS_CONFIG.pitch,
+                volume: TTS_CONFIG.volume,
+                category: TTS_CONFIG.category
+            });
+
+            console.log('[VoiceManager] TTS Promise resolved - Speech finished');
+
+            // Only restart if we are still effectively speaking (not interrupted/stopped/watchdogged)
+            if (isSpeakingRef.current && isActive) {
+                console.log('[VoiceManager] Immediate restart of listening');
+                isSpeakingRef.current = false;
+                setVoiceState(VOICE_STATES.IDLE);
+                await startListening();
+            }
+
+        } catch (err) {
+            console.error('[VoiceManager] Error during speech:', err);
+
+            // If it was just an interruption/error, ensure we recover
+            if (isActive && isSpeakingRef.current) {
+                isSpeakingRef.current = false;
+                setVoiceState(VOICE_STATES.IDLE);
+                await startListening();
+            }
+        }
+    }, [getTTSLanguage, isActive, startListening]);
 
     // Start voice mode
     const startVoiceMode = useCallback(async () => {
