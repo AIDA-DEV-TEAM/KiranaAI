@@ -11,7 +11,7 @@ import {
     VOICE_STATES
 } from '../utils/voiceConfig';
 
-export const useVoiceManager = (currentLanguage = 'en') => {
+export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
     const [voiceState, setVoiceState] = useState(VOICE_STATES.IDLE);
     const [transcript, setTranscript] = useState('');
     const [aiResponse, setAiResponse] = useState('');
@@ -107,6 +107,11 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                 { role: 'assistant', content: aiText }
             );
 
+            // Visual History
+            if (addMessage) {
+                addMessage({ role: 'assistant', content: aiText });
+            }
+
             // Keep only last 10 messages to avoid memory issues
             if (conversationHistoryRef.current.length > 10) {
                 conversationHistoryRef.current = conversationHistoryRef.current.slice(-10);
@@ -123,7 +128,11 @@ export const useVoiceManager = (currentLanguage = 'en') => {
             console.error('[VoiceManager] Error stack:', err.stack);
             setError(`Failed: ${err.message}`);
             setVoiceState(VOICE_STATES.IDLE);
-            setIsActive(false);
+
+            // Retry on error instead of stopping
+            if (isActive) {
+                setTimeout(() => startListening(), 1000);
+            }
         }
     }, [currentLanguage]);
 
@@ -208,10 +217,14 @@ export const useVoiceManager = (currentLanguage = 'en') => {
             console.log('[VoiceManager] Speech recognition started');
 
             // Set no-speech timeout
-            noSpeechTimerRef.current = setTimeout(() => {
+            noSpeechTimerRef.current = setTimeout(async () => {
                 console.log('[VoiceManager] No-speech timeout triggered');
-                setError('No speech detected. Voice mode stopped.');
-                setIsActive(false);
+                // Don't stop, just restart listening to keep the loop "alive"
+                // setError('No speech detected. Voice mode stopped.');
+                // setIsActive(false);
+                if (isActive) {
+                    await startListening();
+                }
             }, NO_SPEECH_TIMEOUT_MS);
 
             let lastTranscript = '';
@@ -266,8 +279,9 @@ export const useVoiceManager = (currentLanguage = 'en') => {
                         clearTimeout(noSpeechTimerRef.current);
                         noSpeechTimerRef.current = setTimeout(() => {
                             console.log('[VoiceManager] No-speech timeout after partial results');
-                            setError('No speech detected. Voice mode stopped.');
-                            setIsActive(false);
+                            if (isActive) {
+                                startListening();
+                            }
                         }, NO_SPEECH_TIMEOUT_MS);
                     }
 
@@ -307,12 +321,23 @@ export const useVoiceManager = (currentLanguage = 'en') => {
 
                     // Process immediately
                     await stopListening();
+
+                    // Visual History
+                    if (addMessage) {
+                        addMessage({ role: 'user', content: finalText });
+                    }
+
                     await processTranscript(finalText);
                 } else if (lastTranscript && lastTranscript.trim() !== '') {
                     // Use last partial result if no final result
                     console.log('[VoiceManager] No final result, using last transcript:', lastTranscript);
                     clearTimers();
                     await stopListening();
+
+                    if (addMessage) {
+                        addMessage({ role: 'user', content: lastTranscript });
+                    }
+
                     await processTranscript(lastTranscript);
                 }
             });

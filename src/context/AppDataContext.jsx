@@ -11,6 +11,9 @@ export const AppDataProvider = ({ children }) => {
     const [inventory, setInventory] = useState([]);
     const [mandiPrices, setMandiPrices] = useState([]);
     const [salesData, setSalesData] = useState([]);
+    const [messages, setMessages] = useState([
+        { role: 'assistant', content: 'Hello! I can help you analyze your shop data. Ask me questions like "How much rice do we have?" or "What are the total sales today?"' }
+    ]);
 
     const [loadingInventory, setLoadingInventory] = useState(false);
     const [loadingMandi, setLoadingMandi] = useState(false);
@@ -94,7 +97,10 @@ export const AppDataProvider = ({ children }) => {
         refreshMandiPrices,
         refreshSales,
         cart,
-        addToCart
+        addToCart,
+        messages,
+        setMessages,
+        addMessage: (msg) => setMessages(prev => [...prev, msg])
     };
 
     return (

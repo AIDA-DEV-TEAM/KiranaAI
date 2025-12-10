@@ -45,9 +45,7 @@ const DeepLinkHandler = () => {
 
 
 function App() {
-  const [messages, setMessages] = React.useState([
-    { role: 'assistant', content: 'Hello! I can help you analyze your shop data. Ask me questions like "How much rice do we have?" or "What are the total sales today?"' }
-  ]);
+
 
   React.useEffect(() => {
     const requestPermissions = async () => {
@@ -75,7 +73,7 @@ function App() {
         <ErrorBoundary>
           <Layout>
             <Routes>
-              <Route path="/" element={<ChatInterface messages={messages} setMessages={setMessages} />} />
+              <Route path="/" element={<ChatInterface />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/storekeeper" element={<StorekeeperView />} />
 

@@ -12,9 +12,9 @@ import VoiceModeModal from './VoiceModeModal';
 
 import { useAppData } from '../context/AppDataContext';
 
-const ChatInterface = ({ messages, setMessages }) => {
+const ChatInterface = () => {
     const { t, i18n } = useTranslation();
-    const { refreshInventory, refreshSales } = useAppData();
+    const { refreshInventory, refreshSales, messages, setMessages, addMessage } = useAppData();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -125,19 +125,6 @@ const ChatInterface = ({ messages, setMessages }) => {
                     </div>
                 </div>
 
-                {/* Live Voice Button */}
-                <button
-                    onClick={handleVoiceModeToggle}
-                    className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg",
-                        isVoiceModeActive
-                            ? "bg-destructive text-destructive-foreground animate-pulse"
-                            : "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
-                    )}
-                    title={isVoiceModeActive ? t('tap_to_stop_voice') : t('start_voice_mode')}
-                >
-                    {isVoiceModeActive ? <X size={20} /> : <Mic size={20} />}
-                </button>
             </div>
 
             {/* Messages Area */}
@@ -248,6 +235,20 @@ const ChatInterface = ({ messages, setMessages }) => {
                             className="w-full px-4 py-3.5 bg-transparent text-foreground placeholder-muted-foreground focus:outline-none rounded-2xl"
                             disabled={isLoading}
                         />
+                        {/* Integrated Voice Button */}
+                        <button
+                            type="button"
+                            onClick={handleVoiceModeToggle}
+                            className={cn(
+                                "p-2.5 mr-1 rounded-xl transition-all flex items-center justify-center",
+                                isVoiceModeActive
+                                    ? "bg-destructive text-destructive-foreground animate-pulse shadow-sm"
+                                    : "text-muted-foreground hover:bg-background hover:text-foreground"
+                            )}
+                            title={isVoiceModeActive ? t('tap_to_stop_voice') : t('start_voice_mode')}
+                        >
+                            {isVoiceModeActive ? <Loader2 size={20} className="animate-spin" /> : <Mic size={20} />}
+                        </button>
                     </div>
 
                     <button
@@ -266,6 +267,7 @@ const ChatInterface = ({ messages, setMessages }) => {
                 onClose={handleVoiceModalClose}
                 voiceState={voiceState}
                 transcript={transcript}
+                addMessage={addMessage}
                 aiResponse={aiResponse}
                 error={voiceError}
             />
