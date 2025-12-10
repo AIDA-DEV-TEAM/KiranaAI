@@ -26,6 +26,14 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
     const conversationHistoryRef = useRef([]);
     const hasSetForceTimerRef = useRef(false); // Track if we've set the force timer
     const isProcessingRef = useRef(false); // Prevent duplicate processing
+    const speakResponseRef = useRef(null); // Ref to break dependency cycle
+    const startListeningRef = useRef(null); // Ref to break dependency cycle
+
+    // Update refs when functions change
+    useEffect(() => {
+        speakResponseRef.current = speakResponse;
+        startListeningRef.current = startListening;
+    }, [speakResponse, startListening]);
 
     // Get TTS language code based on current app language
     const getTTSLanguage = useCallback(() => {
@@ -117,9 +125,13 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                 conversationHistoryRef.current = conversationHistoryRef.current.slice(-10);
             }
 
-            // Speak the response
+            // Speak the response using Ref to avoid circular dependency
             console.log('[VoiceManager] Calling speakResponse...');
-            await speakResponse(aiText);
+            if (speakResponseRef.current) {
+                await speakResponseRef.current(aiText);
+            } else {
+                console.error('[VoiceManager] speakResponseRef is not set!');
+            }
 
         } catch (err) {
             console.error('[VoiceManager] ========== ERROR IN PROCESSING ==========');
@@ -131,7 +143,11 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
             // Retry on error instead of stopping
             if (isActive) {
-                setTimeout(() => startListening(), 1000);
+                setTimeout(() => {
+                    if (startListeningRef.current) {
+                        startListeningRef.current();
+                    }
+                }, 1000);
             }
         }
     }, [currentLanguage]);
@@ -148,12 +164,14 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                 // Explicitly check ref to ensure we want to be active
                 if (isActive) {
                     console.log('[VoiceManager] Watchdog restarting listener...');
-                    await startListening();
+                    if (startListeningRef.current) {
+                        await startListeningRef.current();
+                    }
                 }
             }, 10000);
         }
         return () => clearTimeout(watchdogTimer);
-    }, [voiceState, isActive, startListening]);
+    }, [voiceState, isActive]);
 
 
 
@@ -332,7 +350,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
     const speakResponse = useCallback(async (text) => {
         if (!text || text.trim() === '') {
             if (isActive) {
-                await startListening();
+                if (startListeningRef.current) {
+                    await startListeningRef.current();
+                }
             }
             return;
         }
@@ -364,7 +384,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                 console.log('[VoiceManager] Immediate restart of listening');
                 isSpeakingRef.current = false;
                 setVoiceState(VOICE_STATES.IDLE);
-                await startListening();
+                if (startListeningRef.current) {
+                    await startListeningRef.current();
+                }
             }
 
         } catch (err) {
@@ -374,10 +396,12 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             if (isActive && isSpeakingRef.current) {
                 isSpeakingRef.current = false;
                 setVoiceState(VOICE_STATES.IDLE);
-                await startListening();
+                if (startListeningRef.current) {
+                    await startListeningRef.current();
+                }
             }
         }
-    }, [getTTSLanguage, isActive, startListening]);
+    }, [getTTSLanguage, isActive]);
 
     // Start voice mode
     const startVoiceMode = useCallback(async () => {
