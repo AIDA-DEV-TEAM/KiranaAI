@@ -17,6 +17,12 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
     const [aiResponse, setAiResponse] = useState('');
     const [error, setError] = useState(null);
     const [isActive, setIsActive] = useState(false);
+    const isActiveRef = useRef(false);
+
+    // Sync isActive state to ref
+    useEffect(() => {
+        isActiveRef.current = isActive;
+    }, [isActive]);
 
     const silenceTimerRef = useRef(null);
     const noSpeechTimerRef = useRef(null);
@@ -153,7 +159,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             isProcessingRef.current = false;
 
             // Retry on error instead of stopping
-            if (isActive) {
+            if (isActiveRef.current) {
                 setTimeout(() => {
                     if (startListeningRef.current) {
                         startListeningRef.current();
@@ -173,7 +179,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 setVoiceState(VOICE_STATES.IDLE);
 
                 // Explicitly check ref to ensure we want to be active
-                if (isActive) {
+                if (isActiveRef.current) {
                     console.log('[VoiceManager] Watchdog restarting listener...');
                     if (startListeningRef.current) {
                         await startListeningRef.current();
@@ -182,7 +188,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             }, 10000);
         }
         return () => clearTimeout(watchdogTimer);
-    }, [voiceState, isActive]);
+    }, [voiceState]); // removed isActive dependency as we use ref
 
 
 
@@ -227,7 +233,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             // Set no-speech timeout to EXIT voice mode if no speech detected
             noSpeechTimerRef.current = setTimeout(async () => {
                 console.log('[VoiceManager] No-speech timeout triggered. Exiting voice mode.');
-                if (isActive) {
+                if (isActiveRef.current) {
                     setIsActive(false); // This triggers cleanup effect to set IDLE
                 }
             }, NO_SPEECH_TIMEOUT_MS);
@@ -286,7 +292,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                         clearTimeout(noSpeechTimerRef.current);
                         noSpeechTimerRef.current = setTimeout(() => {
                             console.log('[VoiceManager] No-speech timeout after partial results. Exiting voice mode.');
-                            if (isActive) {
+                            if (isActiveRef.current) {
                                 setIsActive(false);
                             }
                         }, NO_SPEECH_TIMEOUT_MS);
@@ -401,7 +407,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             isProcessingRef.current = false;
 
             // Only restart if we are still effectively speaking (not interrupted/stopped/watchdogged)
-            if (isSpeakingRef.current && isActive) {
+            if (isSpeakingRef.current && isActiveRef.current) {
                 console.log('[VoiceManager] Immediate restart of listening');
                 isSpeakingRef.current = false;
                 setVoiceState(VOICE_STATES.IDLE);
@@ -417,7 +423,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             isProcessingRef.current = false;
 
             // If it was just an interruption/error, ensure we recover
-            if (isActive && isSpeakingRef.current) {
+            if (isActiveRef.current && isSpeakingRef.current) {
                 isSpeakingRef.current = false;
                 setVoiceState(VOICE_STATES.IDLE);
                 if (startListeningRef.current) {
