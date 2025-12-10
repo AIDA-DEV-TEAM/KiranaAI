@@ -34,14 +34,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
     const clearTimersRef = useRef(null);
 
     // Update refs when functions change
-    useEffect(() => {
-        speakResponseRef.current = speakResponse;
-        startListeningRef.current = startListening;
-        processTranscriptRef.current = processTranscript;
-        stopListeningRef.current = stopListening;
-        stopSpeakingRef.current = stopSpeaking;
-        clearTimersRef.current = clearTimers;
-    }, [speakResponse, startListening, processTranscript, stopListening, stopSpeaking, clearTimers]);
+
 
     // Get TTS language code based on current app language
     const getTTSLanguage = useCallback(() => {
@@ -463,6 +456,16 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             if (startListeningRef.current) await startListeningRef.current();
         }
     }, []);
+
+    // Update refs when functions change
+    useEffect(() => {
+        speakResponseRef.current = speakResponse;
+        startListeningRef.current = startListening;
+        processTranscriptRef.current = processTranscript;
+        stopListeningRef.current = stopListening;
+        stopSpeakingRef.current = stopSpeaking;
+        clearTimersRef.current = clearTimers;
+    }, [speakResponse, startListening, processTranscript, stopListening, stopSpeaking, clearTimers]);
 
     // Cleanup on unmount
     useEffect(() => {
