@@ -264,7 +264,17 @@ const ChatInterface = () => {
                             )}
                             title={isVoiceModeActive ? t('tap_to_stop_voice') : t('start_voice_mode')}
                         >
-                            {isVoiceModeActive ? <Loader2 size={20} className="animate-spin" /> : <Mic size={20} />}
+                            {isVoiceModeActive ? (
+                                voiceState === 'thinking' ? (
+                                    <Loader2 size={20} className="animate-spin text-primary" />
+                                ) : (
+                                    <Mic size={20} className={cn(
+                                        voiceState === 'listening' ? "animate-pulse text-red-500" : "text-destructive-foreground"
+                                    )} />
+                                )
+                            ) : (
+                                <Mic size={20} />
+                            )}
                         </button>
                     </div>
 
