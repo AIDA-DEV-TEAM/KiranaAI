@@ -29,13 +29,19 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
     const speakResponseRef = useRef(null); // Ref to break dependency cycle
     const startListeningRef = useRef(null); // Ref to break dependency cycle
     const processTranscriptRef = useRef(null); // Ref to break dependency cycle
+    const stopListeningRef = useRef(null);
+    const stopSpeakingRef = useRef(null);
+    const clearTimersRef = useRef(null);
 
     // Update refs when functions change
     useEffect(() => {
         speakResponseRef.current = speakResponse;
         startListeningRef.current = startListening;
         processTranscriptRef.current = processTranscript;
-    }, [speakResponse, startListening, processTranscript]);
+        stopListeningRef.current = stopListening;
+        stopSpeakingRef.current = stopSpeaking;
+        clearTimersRef.current = clearTimers;
+    }, [speakResponse, startListening, processTranscript, stopListening, stopSpeaking, clearTimers]);
 
     // Get TTS language code based on current app language
     const getTTSLanguage = useCallback(() => {
@@ -184,7 +190,8 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             return;
         }
 
-        clearTimers();
+        if (clearTimersRef.current) clearTimersRef.current();
+
         setVoiceState(VOICE_STATES.LISTENING);
         setTranscript('');
         setAiResponse('');
@@ -216,11 +223,8 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             // Set no-speech timeout
             noSpeechTimerRef.current = setTimeout(async () => {
                 console.log('[VoiceManager] No-speech timeout triggered');
-                // Don't stop, just restart listening to keep the loop "alive"
-                // setError('No speech detected. Voice mode stopped.');
-                // setIsActive(false);
                 if (isActive) {
-                    await startListening();
+                    if (startListeningRef.current) await startListeningRef.current();
                 }
             }, NO_SPEECH_TIMEOUT_MS);
 
@@ -279,7 +283,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                         noSpeechTimerRef.current = setTimeout(() => {
                             console.log('[VoiceManager] No-speech timeout after partial results');
                             if (isActive) {
-                                startListening();
+                                if (startListeningRef.current) startListeningRef.current();
                             }
                         }, NO_SPEECH_TIMEOUT_MS);
                     }
@@ -318,10 +322,10 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                     console.log('[VoiceManager] Processing final text:', finalText);
 
                     // Clear timers
-                    clearTimers();
+                    if (clearTimersRef.current) clearTimersRef.current();
 
                     // Process immediately
-                    await stopListening();
+                    if (stopListeningRef.current) await stopListeningRef.current();
 
                     // Visual History
                     if (addMessage) {
@@ -334,8 +338,8 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                 } else if (lastTranscript && lastTranscript.trim() !== '') {
                     // Use last partial result if no final result
                     console.log('[VoiceManager] No final result, using last transcript:', lastTranscript);
-                    clearTimers();
-                    await stopListening();
+                    if (clearTimersRef.current) clearTimersRef.current();
+                    if (stopListeningRef.current) await stopListeningRef.current();
 
                     if (addMessage) {
                         addMessage({ role: 'user', content: lastTranscript });
@@ -354,7 +358,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             setVoiceState(VOICE_STATES.IDLE);
             setIsActive(false);
         }
-    }, [getTTSLanguage, stopListening, clearTimers]);
+    }, [getTTSLanguage]);
 
     // Speak the AI response using TTS
     const speakResponse = useCallback(async (text) => {
@@ -425,7 +429,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
     const stopVoiceMode = useCallback(async () => {
         console.log('[VoiceManager] Stopping Voice Mode');
         setIsActive(false);
-        clearTimers();
+        if (clearTimersRef.current) clearTimersRef.current();
 
         // Stop audio immediately
         try {
@@ -436,7 +440,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
         // Stop listening
         try {
-            await stopListening();
+            if (stopListeningRef.current) await stopListeningRef.current();
         } catch (e) {
             console.warn("Error stopping listening:", e);
         }
@@ -450,15 +454,15 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
         setTranscript('');
         setAiResponse('');
         conversationHistoryRef.current = [];
-    }, [clearTimers, stopListening, stopSpeaking]);
+    }, []);
 
     // Interrupt (user wants to speak while AI is speaking)
     const interrupt = useCallback(async () => {
         if (isSpeakingRef.current) {
-            await stopSpeaking();
-            await startListening();
+            if (stopSpeakingRef.current) await stopSpeakingRef.current();
+            if (startListeningRef.current) await startListeningRef.current();
         }
-    }, [stopSpeaking, startListening]);
+    }, []);
 
     // Cleanup on unmount
     useEffect(() => {
