@@ -257,20 +257,24 @@ const ChatInterface = () => {
                             type="button"
                             onClick={handleVoiceModeToggle}
                             className={cn(
-                                "p-2.5 mr-1 rounded-xl transition-all flex items-center justify-center",
+                                "p-2.5 mr-1 rounded-xl transition-all flex items-center justify-center shadow-sm",
                                 isVoiceModeActive
-                                    ? "bg-destructive text-destructive-foreground animate-pulse shadow-sm"
+                                    ? voiceState === 'listening'
+                                        ? "bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-200"
+                                        : voiceState === 'thinking'
+                                            ? "bg-blue-500 text-white hover:bg-blue-600 animate-pulse"
+                                            : "bg-primary text-primary-foreground"
                                     : "text-muted-foreground hover:bg-background hover:text-foreground"
                             )}
                             title={isVoiceModeActive ? t('tap_to_stop_voice') : t('start_voice_mode')}
                         >
                             {isVoiceModeActive ? (
-                                voiceState === 'thinking' ? (
-                                    <Loader2 size={20} className="animate-spin text-primary" />
+                                voiceState === 'listening' ? (
+                                    <Loader2 size={20} className="animate-spin" />
+                                ) : voiceState === 'thinking' ? (
+                                    <Bot size={20} className="animate-pulse" />
                                 ) : (
-                                    <Mic size={20} className={cn(
-                                        voiceState === 'listening' ? "animate-pulse text-red-500" : "text-destructive-foreground"
-                                    )} />
+                                    <Mic size={20} />
                                 )
                             ) : (
                                 <Mic size={20} />
