@@ -224,10 +224,11 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             console.log('[VoiceManager] Speech recognition started');
 
             // Set no-speech timeout
+            // Set no-speech timeout to EXIT voice mode if no speech detected
             noSpeechTimerRef.current = setTimeout(async () => {
-                console.log('[VoiceManager] No-speech timeout triggered');
+                console.log('[VoiceManager] No-speech timeout triggered. Exiting voice mode.');
                 if (isActive) {
-                    if (startListeningRef.current) await startListeningRef.current();
+                    setIsActive(false); // This triggers cleanup effect to set IDLE
                 }
             }, NO_SPEECH_TIMEOUT_MS);
 

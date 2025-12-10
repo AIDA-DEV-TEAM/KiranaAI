@@ -66,8 +66,8 @@ You must **ALWAYS** reply with a valid JSON object. Do not output any text outsi
 5.  **Speech Field**: This field is MANDATORY for "answer" type. It must be a short, spoken-word summary of the `content`.
 """
 
-# Using flash-latest as per existing configuration pattern
-model = genai.GenerativeModel('gemini-flash-latest', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
+# Using gemini-2.5-flash as requested
+model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
 
 # Caching schema to avoid generic queries on every request
 CACHED_SCHEMA = None
