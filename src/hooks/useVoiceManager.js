@@ -87,11 +87,17 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
         console.log('[VoiceManager] ========== START PROCESSING ==========');
         console.log('[VoiceManager] Text to process:', text);
 
+        if (isProcessingRef.current) {
+            console.warn('[VoiceManager] Duplicate processing prevented. Locked.');
+            return;
+        }
+
         if (!text || text.trim() === '') {
             console.log('[VoiceManager] ERROR: Empty text, aborting');
             return;
         }
 
+        isProcessingRef.current = true; // LOCK
         setVoiceState(VOICE_STATES.THINKING);
         setTranscript(text);
         console.log('[VoiceManager] State set to THINKING');
@@ -118,6 +124,8 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
             // Visual History
             if (addMessage) {
+                // If the user spoke, we might want to add their message too, skipping for now as it duplicates
+                // addMessage({ role: 'user', content: text }); 
                 addMessage({ role: 'assistant', content: aiText });
             }
 
@@ -129,9 +137,11 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             // Speak the response using Ref to avoid circular dependency
             console.log('[VoiceManager] Calling speakResponse...');
             if (speakResponseRef.current) {
+                // Note: isProcessingRef will be unlocked in speakResponse after TTS finishes
                 await speakResponseRef.current(aiText);
             } else {
                 console.error('[VoiceManager] speakResponseRef is not set!');
+                isProcessingRef.current = false; // Unlock if we can't speak
             }
 
         } catch (err) {
@@ -141,6 +151,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             console.error('[VoiceManager] Error stack:', err.stack);
             setError(`Failed: ${err.message}`);
             setVoiceState(VOICE_STATES.IDLE);
+
+            // Unlock on error
+            isProcessingRef.current = false;
 
             // Retry on error instead of stopping
             if (isActive) {
@@ -386,6 +399,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
             console.log('[VoiceManager] TTS Promise resolved - Speech finished');
 
+            // UNLOCK processing flag
+            isProcessingRef.current = false;
+
             // Only restart if we are still effectively speaking (not interrupted/stopped/watchdogged)
             if (isSpeakingRef.current && isActive) {
                 console.log('[VoiceManager] Immediate restart of listening');
@@ -398,6 +414,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
         } catch (err) {
             console.error('[VoiceManager] Error during speech:', err);
+
+            // UNLOCK processing flag on error
+            isProcessingRef.current = false;
 
             // If it was just an interruption/error, ensure we recover
             if (isActive && isSpeakingRef.current) {

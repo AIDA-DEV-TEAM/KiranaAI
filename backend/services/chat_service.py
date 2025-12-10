@@ -67,10 +67,34 @@ You must **ALWAYS** reply with a valid JSON object. Do not output any text outsi
 # Using flash-latest as per existing configuration pattern
 model = genai.GenerativeModel('gemini-flash-latest', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
 
+def get_db_schema(db: Session, limit_tables: list = None) -> str:
+    """Dynamically fetches the CREATE TABLE statements to show the LLM the exact schema."""
+    try:
+        # Fetch all table names
+        tables = db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")).fetchall()
+        schema_text = ""
+        for table in tables:
+            table_name = table[0]
+            if limit_tables and table_name not in limit_tables:
+                continue
+            
+            # Get the CREATE statement
+            ddl = db.execute(text(f"SELECT sql FROM sqlite_master WHERE type='table' AND name = '{table_name}'")).fetchone()
+            if ddl and ddl[0]:
+                schema_text += ddl[0] + ";\n\n"
+        
+        return schema_text
+    except Exception as e:
+        logger.error(f"Schema Fetch Error: {e}")
+        return "Schema unavailable."
+
 async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en") -> dict:
     if not api_key:
         logger.error("Gemini API key not configured")
         return {"response": "System Error: API Key missing.", "sql_query": None, "action_performed": False}
+
+    # Fetch dynamic schema
+    schema_context = get_db_schema(db)
 
     # Convert history to Gemini format
     gemini_history = []
@@ -79,8 +103,18 @@ async def process_chat_message(message: str, db: Session, history: list = [], la
         gemini_history.append({"role": role, "parts": [msg.get("content")]})
 
     chat_session = model.start_chat(history=gemini_history)
-    # Explicitly enforce language constraint in every turn
-    prompt = f"User: {message}\nLanguage: {language}\nRespond in {language}.\n"
+    
+    # Explicitly enforce language and Inject Schema
+    prompt = f"""
+System Warning: You must ONLY query the tables and columns defined below. Do not hallucinate columns.
+
+Current Database Schema:
+{schema_context}
+
+User: {message}
+Language: {language}
+Respond in {language}.
+"""
 
     try:
         response = chat_session.send_message(prompt)

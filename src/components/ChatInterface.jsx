@@ -30,7 +30,7 @@ const ChatInterface = () => {
         isActive: isVoiceModeActive,
         startVoiceMode,
         stopVoiceMode
-    } = useVoiceManager(i18n.language);
+    } = useVoiceManager(i18n.language, addMessage);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
