@@ -69,8 +69,18 @@ You must **ALWAYS** reply with a valid JSON object. Do not output any text outsi
 # Using flash-latest as per existing configuration pattern
 model = genai.GenerativeModel('gemini-flash-latest', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
 
-def get_db_schema(db: Session, limit_tables: list = None) -> str:
-    """Dynamically fetches the CREATE TABLE statements to show the LLM the exact schema."""
+# Caching schema to avoid generic queries on every request
+CACHED_SCHEMA = None
+
+def get_db_schema(db: Session, limit_tables: list = None, force_refresh: bool = False) -> str:
+    """
+    Dynamically fetches the CREATE TABLE statements to show the LLM the exact schema.
+    Uses caching to improve performance on subsequent calls.
+    """
+    global CACHED_SCHEMA
+    if CACHED_SCHEMA and not force_refresh and not limit_tables:
+        return CACHED_SCHEMA
+
     try:
         # Fetch all table names
         tables = db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")).fetchall()
@@ -85,17 +95,34 @@ def get_db_schema(db: Session, limit_tables: list = None) -> str:
             if ddl and ddl[0]:
                 schema_text += ddl[0] + ";\n\n"
         
+        # Only cache if we aren't filtering tables
+        if not limit_tables:
+            CACHED_SCHEMA = schema_text
+
         return schema_text
     except Exception as e:
         logger.error(f"Schema Fetch Error: {e}")
         return "Schema unavailable."
+
+def parse_gemini_json(text: str) -> dict:
+    """Helper to cleanly parse JSON from Gemini's output, handling markdown blocks."""
+    try:
+        data = json.loads(text)
+        return data
+    except json.JSONDecodeError:
+        # Fallback: remove markdown
+        clean_text = text.replace("```json", "").replace("```", "").strip()
+        try:
+            return json.loads(clean_text)
+        except json.JSONDecodeError:
+            return None
 
 async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en") -> dict:
     if not api_key:
         logger.error("Gemini API key not configured")
         return {"response": "System Error: API Key missing.", "sql_query": None, "action_performed": False}
 
-    # Fetch dynamic schema
+    # Fetch dynamic schema (cached)
     schema_context = get_db_schema(db)
 
     # Convert history to Gemini format
@@ -129,16 +156,11 @@ Respond in {language}.
              
         logger.info(f"AI Raw Response: {text_response}")
 
-        try:
-            data = json.loads(text_response)
-        except json.JSONDecodeError:
-            # Fallback if model outputs markdown code block
-            clean_text = text_response.replace("```json", "").replace("```", "").strip()
-            try:
-                data = json.loads(clean_text)
-            except:
-                # Ultimate fallback: treat as answer
-                return {"response": text_response, "speech": text_response, "sql_query": None, "action_performed": False}
+        data = parse_gemini_json(text_response)
+        
+        # Fallback if parsing fails entirely
+        if not data:
+             return {"response": text_response, "speech": text_response, "sql_query": None, "action_performed": False}
 
         if data.get("type") == "answer":
             return {"response": data.get("content"), "speech": data.get("speech"), "sql_query": None, "action_performed": False}
@@ -194,20 +216,18 @@ Respond in {language}.
                 """
 
                 final_response = chat_session.send_message(answer_prompt)
+                
+                final_text = ""
                 try:
-                    final_text = ""
-                    try:
-                        final_text = final_response.text.strip()
-                    except ValueError:
-                         logger.warning("Gemini final response blocked or empty.")
-                         return {"response": "Action completed, but I couldn't generate a summary.", "sql_query": None, "action_performed": action_performed}
+                    final_text = final_response.text.strip()
+                except ValueError:
+                     return {"response": "Action completed, but I couldn't generate a summary.", "sql_query": None, "action_performed": action_performed}
 
-                    final_text = final_text.replace("```json", "").replace("```", "").strip()
-                    final_data = json.loads(final_text)
+                final_data = parse_gemini_json(final_text)
+                if final_data:
                     return {"response": final_data.get("content"), "speech": final_data.get("speech"), "sql_query": None, "action_performed": action_performed}
-                except Exception as json_err:
-                    logger.error(f"Error parsing final response: {json_err}")
-                    return {"response": final_response.text.strip(), "sql_query": None, "action_performed": action_performed}
+                else:
+                    return {"response": final_text, "sql_query": None, "action_performed": action_performed}
 
             except Exception as e:
                 db.rollback()

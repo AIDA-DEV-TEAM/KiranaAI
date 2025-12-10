@@ -3,21 +3,19 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
-import { Send, Bot, User, Loader2, Mic, X } from 'lucide-react';
+import { Send, Bot, User, Loader2, Mic } from 'lucide-react';
 import { chatWithData } from '../services/api';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useVoiceManager } from '../hooks/useVoiceManager';
-import VoiceModeModal from './VoiceModeModal';
 
 import { useAppData } from '../context/AppDataContext';
 
 const ChatInterface = () => {
     const { t, i18n } = useTranslation();
-    const { refreshInventory, refreshSales, messages, setMessages, addMessage } = useAppData();
+    const { refreshInventory, refreshSales, messages, setMessages, addMessage, refreshAllData } = useAppData();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
     const messagesEndRef = useRef(null);
 
@@ -30,7 +28,7 @@ const ChatInterface = () => {
         isActive: isVoiceModeActive,
         startVoiceMode,
         stopVoiceMode
-    } = useVoiceManager(i18n.language, addMessage);
+    } = useVoiceManager(i18n.language, addMessage, refreshAllData);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -98,11 +96,6 @@ const ChatInterface = () => {
         } else {
             await startVoiceMode();
         }
-    };
-
-    // Handle voice modal close - No longer needed but keeping function struct for safety if passed elsewhere
-    const handleVoiceModalClose = async () => {
-        await stopVoiceMode();
     };
 
     return (
@@ -222,6 +215,33 @@ const ChatInterface = () => {
 
             {/* Input Area */}
             <div className="p-3 bg-background/80 backdrop-blur-xl border-t border-border sticky bottom-0 z-20 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] md:pb-4">
+                {/* Voice Status Indicator */}
+                {(isVoiceModeActive || isLoading) && (
+                    <div className="mb-2 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+                        <div className={cn(
+                            "px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm border flex items-center gap-2",
+                            voiceState === 'listening' ? "bg-red-500/10 text-red-600 border-red-200" :
+                                (voiceState === 'thinking' || isLoading) ? "bg-blue-500/10 text-blue-600 border-blue-200" :
+                                    "bg-muted text-muted-foreground border-border"
+                        )}>
+                            {voiceState === 'listening' && (
+                                <>
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                    </span>
+                                    Listening...
+                                </>
+                            )}
+                            {(voiceState === 'thinking' || isLoading) && (
+                                <>
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Processing...
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
                 <form onSubmit={(e) => handleSend(e)} className="flex gap-2 items-end max-w-4xl mx-auto">
                     <div className="flex-1 relative bg-muted/50 rounded-2xl border border-transparent focus-within:border-primary/50 focus-within:bg-background transition-all duration-200 flex items-center">
                         <input

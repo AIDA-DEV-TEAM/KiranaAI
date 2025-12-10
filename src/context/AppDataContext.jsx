@@ -86,6 +86,16 @@ export const AppDataProvider = ({ children }) => {
         refreshSales();
     }, []);
 
+    const refreshAllData = useCallback(async () => {
+        console.log("Refreshing all app data...");
+        await Promise.all([
+            refreshInventory(true),
+            refreshSales(true),
+            refreshMandiPrices(true)
+        ]);
+        console.log("All app data refreshed.");
+    }, [refreshInventory, refreshSales, refreshMandiPrices]);
+
     const value = {
         inventory,
         mandiPrices,
@@ -96,6 +106,7 @@ export const AppDataProvider = ({ children }) => {
         refreshInventory,
         refreshMandiPrices,
         refreshSales,
+        refreshAllData,
         cart,
         addToCart,
         messages,

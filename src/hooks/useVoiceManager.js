@@ -11,7 +11,7 @@ import {
     VOICE_STATES
 } from '../utils/voiceConfig';
 
-export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
+export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData) => {
     const [voiceState, setVoiceState] = useState(VOICE_STATES.IDLE);
     const [transcript, setTranscript] = useState('');
     const [aiResponse, setAiResponse] = useState('');
@@ -20,45 +20,38 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
     const silenceTimerRef = useRef(null);
     const noSpeechTimerRef = useRef(null);
-    const forceProcessTimerRef = useRef(null); // Force process after max wait time
+    const forceProcessTimerRef = useRef(null);
     const isListeningRef = useRef(false);
     const isSpeakingRef = useRef(false);
     const conversationHistoryRef = useRef([]);
-    const hasSetForceTimerRef = useRef(false); // Track if we've set the force timer
-    const isProcessingRef = useRef(false); // Prevent duplicate processing
-    const speakResponseRef = useRef(null); // Ref to break dependency cycle
-    const startListeningRef = useRef(null); // Ref to break dependency cycle
-    const processTranscriptRef = useRef(null); // Ref to break dependency cycle
+    const hasSetForceTimerRef = useRef(false);
+    const isProcessingRef = useRef(false);
+
+    // Refs to break dependency cycles
+    const speakResponseRef = useRef(null);
+    const startListeningRef = useRef(null);
+    const processTranscriptRef = useRef(null);
     const stopListeningRef = useRef(null);
     const stopSpeakingRef = useRef(null);
     const clearTimersRef = useRef(null);
 
-    // Update refs when functions change
-
-
-    // Get TTS language code based on current app language
+    // Get TTS language code
     const getTTSLanguage = useCallback(() => {
         return VOICE_LANGUAGE_MAP[currentLanguage] || 'en-IN';
     }, [currentLanguage]);
 
     // Clear all timers
     const clearTimers = useCallback(() => {
-        if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
-            silenceTimerRef.current = null;
-        }
-        if (noSpeechTimerRef.current) {
-            clearTimeout(noSpeechTimerRef.current);
-            noSpeechTimerRef.current = null;
-        }
-        if (forceProcessTimerRef.current) {
-            clearTimeout(forceProcessTimerRef.current);
-            forceProcessTimerRef.current = null;
-        }
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        if (noSpeechTimerRef.current) clearTimeout(noSpeechTimerRef.current);
+        if (forceProcessTimerRef.current) clearTimeout(forceProcessTimerRef.current);
         hasSetForceTimerRef.current = false;
+        silenceTimerRef.current = null;
+        noSpeechTimerRef.current = null;
+        forceProcessTimerRef.current = null;
     }, []);
 
-    // Stop speech recognition
+    // Stop listening
     const stopListening = useCallback(async () => {
         if (isListeningRef.current) {
             try {
@@ -70,7 +63,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
         }
     }, []);
 
-    // Stop TTS
+    // Stop speaking
     const stopSpeaking = useCallback(async () => {
         if (isSpeakingRef.current) {
             try {
@@ -112,26 +105,33 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             );
 
             console.log('[VoiceManager] Backend response received:', response);
+
             const aiText = response.response;
-            const speechText = response.speech || aiText; // Use concise speech if available
+            const speechText = response.speech || aiText;
 
             setAiResponse(aiText);
+
+            // Refresh data if action was performed
+            if (response.action_performed && refreshData) {
+                console.log('[VoiceManager] Action performed, refreshing data...');
+                refreshData();
+            }
+
             console.log('[VoiceManager] AI Response:', aiText);
 
             // Update conversation history
             conversationHistoryRef.current.push(
                 { role: 'user', content: text },
-                { role: 'assistant', content: aiText } // Store full content in history context for LLM
+                { role: 'assistant', content: aiText }
             );
 
             // Visual History
             if (addMessage) {
-                // Show user message immediately
                 addMessage({ role: 'user', content: text });
-                addMessage({ role: 'assistant', content: aiText }); // Display full content
+                addMessage({ role: 'assistant', content: aiText });
             }
 
-            // Keep only last 10 messages to avoid memory issues
+            // Keep only last 10 messages
             if (conversationHistoryRef.current.length > 10) {
                 conversationHistoryRef.current = conversationHistoryRef.current.slice(-10);
             }
@@ -139,7 +139,6 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             // Speak the response using Ref to avoid circular dependency
             console.log('[VoiceManager] Calling speakResponse with:', speechText);
             if (speakResponseRef.current) {
-                // Note: isProcessingRef will be unlocked in speakResponse after TTS finishes
                 await speakResponseRef.current(speechText);
             } else {
                 console.error('[VoiceManager] speakResponseRef is not set!');
@@ -149,12 +148,8 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
         } catch (err) {
             console.error('[VoiceManager] ========== ERROR IN PROCESSING ==========');
             console.error('[VoiceManager] Error details:', err);
-            console.error('[VoiceManager] Error message:', err.message);
-            console.error('[VoiceManager] Error stack:', err.stack);
             setError(`Failed: ${err.message}`);
             setVoiceState(VOICE_STATES.IDLE);
-
-            // Unlock on error
             isProcessingRef.current = false;
 
             // Retry on error instead of stopping
@@ -166,7 +161,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                 }, 1000);
             }
         }
-    }, [currentLanguage]);
+    }, [currentLanguage, addMessage, refreshData, getTTSLanguage, isActive]);
 
     // Watchdog: If stuck in SPEAKING for too long (> 10s), force reset
     useEffect(() => {

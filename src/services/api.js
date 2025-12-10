@@ -21,33 +21,15 @@ export const getSales = async () => {
     return response.data;
 };
 
-export const getProducts = async () => {
-    const response = await api.get('/inventory/');
-    return response.data;
-};
+// getProducts is removed as it was a duplicate of getInventory
 
-// Demo Mode: Fetch from local CSV
 export const getMandiPrices = async () => {
     try {
-        const response = await fetch('/demo_mandi_prices.csv');
-        const text = await response.text();
-        const rows = text.split('\n').filter(row => row.trim() !== '');
-        const headers = rows[0].split(',').map(h => h.trim());
-
-        const prices = rows.slice(1).map(row => {
-            const values = row.split(',');
-            const entry = {};
-            headers.forEach((header, index) => {
-                entry[header] = values[index]?.trim();
-            });
-            return entry;
-        });
-
-        return { prices };
-    } catch (error) {
-        console.warn("Failed to load demo prices, falling back to API", error);
         const response = await api.get('/mandi/prices');
         return response.data;
+    } catch (error) {
+        console.error("Failed to fetch mandi prices", error);
+        return { prices: [] }; // Return empty structure on error
     }
 };
 
