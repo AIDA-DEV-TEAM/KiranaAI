@@ -27,9 +27,9 @@ class SaleCreate(BaseModel):
 
 class Sale(BaseModel):
     id: int
-    product_id: int
+    product_id: Optional[int] = None
     quantity: int
-    total_amount: float
+    total_amount: Optional[float] = None
     timestamp: datetime
 
     class Config:
