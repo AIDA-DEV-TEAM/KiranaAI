@@ -285,9 +285,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                     if (noSpeechTimerRef.current) {
                         clearTimeout(noSpeechTimerRef.current);
                         noSpeechTimerRef.current = setTimeout(() => {
-                            console.log('[VoiceManager] No-speech timeout after partial results');
+                            console.log('[VoiceManager] No-speech timeout after partial results. Exiting voice mode.');
                             if (isActive) {
-                                if (startListeningRef.current) startListeningRef.current();
+                                setIsActive(false);
                             }
                         }, NO_SPEECH_TIMEOUT_MS);
                     }
