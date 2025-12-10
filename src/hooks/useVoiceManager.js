@@ -28,12 +28,14 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
     const isProcessingRef = useRef(false); // Prevent duplicate processing
     const speakResponseRef = useRef(null); // Ref to break dependency cycle
     const startListeningRef = useRef(null); // Ref to break dependency cycle
+    const processTranscriptRef = useRef(null); // Ref to break dependency cycle
 
     // Update refs when functions change
     useEffect(() => {
         speakResponseRef.current = speakResponse;
         startListeningRef.current = startListening;
-    }, [speakResponse, startListening]);
+        processTranscriptRef.current = processTranscript;
+    }, [speakResponse, startListening, processTranscript]);
 
     // Get TTS language code based on current app language
     const getTTSLanguage = useCallback(() => {
@@ -262,7 +264,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
                             if (textToProcess && textToProcess.trim().length > 3) {
                                 console.log('[VoiceManager] ABOUT TO CALL processTranscript with:', textToProcess);
-                                await processTranscript(textToProcess);
+                                if (processTranscriptRef.current) {
+                                    await processTranscriptRef.current(textToProcess);
+                                }
                             } else {
                                 console.log('[VoiceManager] ERROR: Text too short or empty:', textToProcess);
                             }
@@ -296,7 +300,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                                 console.log('[VoiceManager] Error stopping recognition:', err);
                             }
                             console.log('[VoiceManager] ABOUT TO CALL processTranscript from silence timer');
-                            await processTranscript(interimText);
+                            if (processTranscriptRef.current) {
+                                await processTranscriptRef.current(interimText);
+                            }
                         } else {
                             console.log('[VoiceManager] Transcript too short, ignoring:', interimText);
                         }
@@ -322,7 +328,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                         addMessage({ role: 'user', content: finalText });
                     }
 
-                    await processTranscript(finalText);
+                    if (processTranscriptRef.current) {
+                        await processTranscriptRef.current(finalText);
+                    }
                 } else if (lastTranscript && lastTranscript.trim() !== '') {
                     // Use last partial result if no final result
                     console.log('[VoiceManager] No final result, using last transcript:', lastTranscript);
@@ -333,7 +341,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
                         addMessage({ role: 'user', content: lastTranscript });
                     }
 
-                    await processTranscript(lastTranscript);
+                    if (processTranscriptRef.current) {
+                        await processTranscriptRef.current(lastTranscript);
+                    }
                 }
             });
 
@@ -344,7 +354,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             setVoiceState(VOICE_STATES.IDLE);
             setIsActive(false);
         }
-    }, [getTTSLanguage, processTranscript, stopListening, clearTimers]);
+    }, [getTTSLanguage, stopListening, clearTimers]);
 
     // Speak the AI response using TTS
     const speakResponse = useCallback(async (text) => {
