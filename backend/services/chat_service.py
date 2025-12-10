@@ -45,7 +45,8 @@ You must **ALWAYS** reply with a valid JSON object. Do not output any text outsi
 ```json
 {
   "type": "answer",
-  "content": "Your friendly natural language response here. **IMPORTANT**: If listing multiple items (products, sales, prices), YOU MUST USE A MARKDOWN TABLE."
+  "content": "Detailed response with **Markdown tables** if needed.",
+  "speech": "Concise, conversational summary for Voice Output (No Markdown, < 2 sentences)."
 }
 ```
 
@@ -58,10 +59,11 @@ You must **ALWAYS** reply with a valid JSON object. Do not output any text outsi
 ```
 
 **CRITICAL RULES:**
-1.  **Language**: The `content` field MUST be in the SAME language as the user's input (Hindi/Telugu/English).
+1.  **Language**: The `content` and `speech` fields MUST be in the SAME language as the user's input (Hindi/Telugu/English).
 2.  **No Technical Terms**: The `content` for "answer" type must be simple and non-technical.
 3.  **Valid JSON**: Ensure the output is strictly valid JSON.
 4.  **Markdown Tables**: When showing lists of data (e.g., "Show all rice products", "List sales today"), format the output as a clean Markdown table.
+5.  **Speech Field**: This field is MANDATORY for "answer" type. It must be a short, spoken-word summary of the `content`.
 """
 
 # Using flash-latest as per existing configuration pattern
@@ -136,10 +138,10 @@ Respond in {language}.
                 data = json.loads(clean_text)
             except:
                 # Ultimate fallback: treat as answer
-                return {"response": text_response, "sql_query": None, "action_performed": False}
+                return {"response": text_response, "speech": text_response, "sql_query": None, "action_performed": False}
 
         if data.get("type") == "answer":
-            return {"response": data.get("content"), "sql_query": None, "action_performed": False}
+            return {"response": data.get("content"), "speech": data.get("speech"), "sql_query": None, "action_performed": False}
 
         elif data.get("type") == "sql":
             sql_query = data.get("content")
@@ -188,7 +190,7 @@ Respond in {language}.
                 3. If it was a query, show the data cleanly.
                 4. **CRITICAL**: Reply in the SAME language as the user's question ({language}).
                 5. **Formatting**: If the data retrieved contains multiple rows (more than 1), YOU MUST present it as a Markdown Table in your response.
-                6. **Output Format**: Return a JSON object: {{ "type": "answer", "content": "..." }}
+                6. **Output Format**: Return a JSON object: {{ "type": "answer", "content": "...", "speech": "concise summary" }}
                 """
 
                 final_response = chat_session.send_message(answer_prompt)
@@ -202,7 +204,7 @@ Respond in {language}.
 
                     final_text = final_text.replace("```json", "").replace("```", "").strip()
                     final_data = json.loads(final_text)
-                    return {"response": final_data.get("content"), "sql_query": None, "action_performed": action_performed}
+                    return {"response": final_data.get("content"), "speech": final_data.get("speech"), "sql_query": None, "action_performed": action_performed}
                 except Exception as json_err:
                     logger.error(f"Error parsing final response: {json_err}")
                     return {"response": final_response.text.strip(), "sql_query": None, "action_performed": action_performed}

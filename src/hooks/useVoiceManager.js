@@ -113,20 +113,22 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
             console.log('[VoiceManager] Backend response received:', response);
             const aiText = response.response;
+            const speechText = response.speech || aiText; // Use concise speech if available
+
             setAiResponse(aiText);
             console.log('[VoiceManager] AI Response:', aiText);
 
             // Update conversation history
             conversationHistoryRef.current.push(
                 { role: 'user', content: text },
-                { role: 'assistant', content: aiText }
+                { role: 'assistant', content: aiText } // Store full content in history context for LLM
             );
 
             // Visual History
             if (addMessage) {
                 // Show user message immediately
                 addMessage({ role: 'user', content: text });
-                addMessage({ role: 'assistant', content: aiText });
+                addMessage({ role: 'assistant', content: aiText }); // Display full content
             }
 
             // Keep only last 10 messages to avoid memory issues
@@ -135,10 +137,10 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
             }
 
             // Speak the response using Ref to avoid circular dependency
-            console.log('[VoiceManager] Calling speakResponse...');
+            console.log('[VoiceManager] Calling speakResponse with:', speechText);
             if (speakResponseRef.current) {
                 // Note: isProcessingRef will be unlocked in speakResponse after TTS finishes
-                await speakResponseRef.current(aiText);
+                await speakResponseRef.current(speechText);
             } else {
                 console.error('[VoiceManager] speakResponseRef is not set!');
                 isProcessingRef.current = false; // Unlock if we can't speak
