@@ -124,8 +124,8 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage) => {
 
             // Visual History
             if (addMessage) {
-                // If the user spoke, we might want to add their message too, skipping for now as it duplicates
-                // addMessage({ role: 'user', content: text }); 
+                // Show user message immediately
+                addMessage({ role: 'user', content: text });
                 addMessage({ role: 'assistant', content: aiText });
             }
 

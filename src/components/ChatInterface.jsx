@@ -95,17 +95,14 @@ const ChatInterface = () => {
     const handleVoiceModeToggle = async () => {
         if (isVoiceModeActive) {
             await stopVoiceMode();
-            setIsVoiceModalOpen(false);
         } else {
-            setIsVoiceModalOpen(true);
             await startVoiceMode();
         }
     };
 
-    // Handle voice modal close
+    // Handle voice modal close - No longer needed but keeping function struct for safety if passed elsewhere
     const handleVoiceModalClose = async () => {
         await stopVoiceMode();
-        setIsVoiceModalOpen(false);
     };
 
     return (
@@ -261,16 +258,8 @@ const ChatInterface = () => {
                 </form>
             </div>
 
-            {/* Voice Mode Modal */}
-            <VoiceModeModal
-                isOpen={isVoiceModalOpen}
-                onClose={handleVoiceModalClose}
-                voiceState={voiceState}
-                transcript={transcript}
-                addMessage={addMessage}
-                aiResponse={aiResponse}
-                error={voiceError}
-            />
+            {/* Voice Mode Modal Removed to prevent screen switching */}
+            {/* <VoiceModeModal ... /> */}
         </div>
     );
 };
