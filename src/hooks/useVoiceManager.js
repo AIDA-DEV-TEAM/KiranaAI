@@ -257,6 +257,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                         forceProcessTimerRef.current = setTimeout(async () => {
                             const textToProcess = lastTranscript; // Use ref variable, not closure variable
                             console.log('[VoiceManager] ========== FORCE TIMER FIRED ==========');
+                            setVoiceState(VOICE_STATES.THINKING);
                             console.log('[VoiceManager] Processing text:', textToProcess);
 
                             // Clear only silence and no-speech timers, not ourselves
@@ -336,6 +337,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                     const finalText = data.matches[0];
                     console.log('[VoiceManager] Processing final text:', finalText);
 
+                    // Immediate visual update to stop "Listening/Spinning"
+                    setVoiceState(VOICE_STATES.THINKING);
+
                     // Clear timers
                     if (clearTimersRef.current) clearTimersRef.current();
 
@@ -353,6 +357,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 } else if (lastTranscript && lastTranscript.trim() !== '') {
                     // Use last partial result if no final result
                     console.log('[VoiceManager] No final result, using last transcript:', lastTranscript);
+                    setVoiceState(VOICE_STATES.THINKING);
                     if (clearTimersRef.current) clearTimersRef.current();
                     if (stopListeningRef.current) await stopListeningRef.current();
 
