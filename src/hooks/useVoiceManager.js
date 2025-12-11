@@ -11,6 +11,8 @@ import {
     VOICE_STATES
 } from '../utils/voiceConfig';
 
+import { LocalStorageService } from '../services/LocalStorageService';
+
 export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData) => {
     const [voiceState, setVoiceState] = useState(VOICE_STATES.IDLE);
     const [transcript, setTranscript] = useState('');
@@ -112,16 +114,26 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
             console.log('[VoiceManager] Backend response received:', response);
 
-            const aiText = response.response;
-            const speechText = response.speech || aiText;
+            // Handle INTENT Actions (Frontend Execution)
+            let aiText = response.response;
+            let speechText = response.speech || aiText;
+
+            if (response.action && response.action !== 'NONE') {
+                console.log('[VoiceManager] ACTION DETAILS:', response.action, response.params);
+                const actionResult = handleVoiceAction(response.action, response.params);
+                if (actionResult && actionResult.speech) {
+                    speechText = actionResult.speech;
+                    // Optional: Append confirmation to text response if needed, or trust the AI's "content"
+                }
+
+                if (refreshData) {
+                    await refreshData(true);
+                }
+            }
 
             setAiResponse(aiText);
 
-            // Refresh data if action was performed
-            if (response.action_performed && refreshData) {
-                console.log('[VoiceManager] Action performed, refreshing data...');
-                refreshData();
-            }
+            // ... (rest of logic)
 
             console.log('[VoiceManager] AI Response:', aiText);
 
@@ -530,6 +542,56 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             setVoiceState(VOICE_STATES.IDLE);
         }
     }, [isActive, clearTimers]);
+
+    // Action Handler
+    const handleVoiceAction = (action, params) => {
+        if (!params || !params.product) return null;
+
+        const inventory = LocalStorageService.getInventory();
+        // Fuzzy search for product
+        const query = params.product.toLowerCase();
+        const product = inventory.find(p => {
+            const enName = (p.name.en || p.name).toLowerCase();
+            // Check if translation dictionary matches
+            const translations = Object.values(p.name).map(v => v.toLowerCase());
+            return enName.includes(query) || translations.some(t => t.includes(query));
+        });
+
+        if (!product) {
+            console.warn("Product not found for:", params.product);
+            return { speech: "I couldn't find that product." };
+        }
+
+        try {
+            if (action === 'UPDATE_STOCK') {
+                const qty = parseInt(params.quantity);
+                if (isNaN(qty)) return null;
+
+                const newStock = Math.max(0, product.stock + qty);
+                LocalStorageService.updateProduct(product.id, { stock: newStock });
+                return { speech: `Updated stock of ${product.name.en || product.name}. New quantity is ${newStock}.` };
+
+            } else if (action === 'RECORD_SALE') {
+                const qty = parseInt(params.quantity);
+                if (isNaN(qty)) return null;
+
+                if (product.stock < qty) {
+                    return { speech: `Not enough stock. Only ${product.stock} remaining.` };
+                }
+
+                LocalStorageService.addSale({
+                    product_id: product.id,
+                    quantity: qty,
+                    total_amount: qty * parseFloat(product.price)
+                });
+                return { speech: `Sold ${qty} ${product.name.en || product.name}. Remaining stock is ${product.stock - qty}.` };
+            }
+        } catch (e) {
+            console.error("Action execution failed", e);
+            return { speech: "Sorry, I had trouble updating the data." };
+        }
+        return null;
+    };
 
     return {
         voiceState,

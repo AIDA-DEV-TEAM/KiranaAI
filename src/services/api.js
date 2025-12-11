@@ -8,7 +8,7 @@ export const api = axios.create({
 
 export const chatWithData = async (message, history = [], language = 'en') => {
     const response = await api.post('/chat/', { message, history, language });
-    return response.data;
+    return response.data; // This contains { response, speech, action, params }
 };
 
 export const getInventory = async () => {
