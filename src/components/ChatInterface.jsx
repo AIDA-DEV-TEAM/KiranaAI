@@ -74,9 +74,15 @@ const ChatInterface = () => {
                     console.log("Executing Text Command Action:", data.action);
                     const result = handleVoiceAction(data.action, data.params);
 
-                    // CRITICAL: If local action has a specific result (success/fail), use THAT as the response
+                    // CRITICAL: If local action has a specific result (success/fail)
+                    // If FAIL: Override with error message.
+                    // If SUCCESS: Use LLM response for personality.
                     if (result && result.speech) {
-                        responseText = result.speech;
+                        if (result.success && data.response) {
+                            // Keep LLM response (Do nothing, responseText is already data.response)
+                        } else {
+                            responseText = result.speech;
+                        }
                     }
 
                     // Refresh data immediately

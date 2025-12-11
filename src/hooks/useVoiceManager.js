@@ -126,10 +126,16 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 console.log('[VoiceManager] ACTION DETAILS:', response.action, response.params);
                 const actionResult = handleVoiceAction(response.action, response.params);
 
-                // CRITICAL FIX: If local action returns speech (success OR failure), prefer it over LLM speech
+                // CRITICAL FIX: If local action returns speech
+                // 1. If SUCCESS: Prefer LLM speech (Natural) if available, fallback to Local
+                // 2. If FAIL: Force Local speech (Error details)
                 if (actionResult && actionResult.speech) {
-                    speechText = actionResult.speech;
-                    console.log('[VoiceManager] Overriding LLM speech with Local Result:', speechText);
+                    if (actionResult.success && response.speech) {
+                        speechText = response.speech; // Use Nice LLM response
+                    } else {
+                        speechText = actionResult.speech; // Use Local Error/Fact
+                    }
+                    console.log('[VoiceManager] Final Speech:', speechText);
                 }
 
                 if (refreshData) {
@@ -572,7 +578,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
         if (!product) {
             console.warn("Product not found for:", params.product);
             const notFoundMsg = t('voice_product_not_found') || "Product not found.";
-            return { speech: notFoundMsg };
+            return { speech: notFoundMsg, success: false };
         }
 
         try {
@@ -586,7 +592,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 // Use localized success key or fallback
                 const successMsg = t('voice_stock_response', { name: product.name.en || product.name, stock: newStock, lng: lang })
                     || `Stock updated. New stock: ${newStock}`;
-                return { speech: successMsg };
+                return { speech: successMsg, success: true };
 
             } else if (action === 'RECORD_SALE') {
                 const qty = parseInt(params.quantity);
@@ -594,7 +600,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
                 if (product.stock < qty) {
                     const lowStockMsg = t('voice_low_stock') || `Not enough stock. Only ${product.stock} left.`;
-                    return { speech: lowStockMsg };
+                    return { speech: lowStockMsg, success: false };
                 }
 
                 const price = parseFloat(product.price);
@@ -610,14 +616,14 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
                 const left = product.stock - qty;
                 const saleMsg = t('voice_sale_response', { name: nameStr, remaining: left, lng: lang }) || `Sale recorded. Remaining: ${left}`;
-                return { speech: saleMsg };
+                return { speech: saleMsg, success: true };
 
             } else if (action === 'GET_INFO') {
                 // The 't' from useTranslation will be used here, shadowing the 't' from 'responses'
                 // Assuming useTranslation is imported and 't' is destructured from it at the component level.
                 if (params.query_type === 'stock') {
                     const name = product.name[lang] || product.name.en || product.name;
-                    return { speech: t('voice_stock_response', { name, stock: product.stock, lng: lang }) };
+                    return { speech: t('voice_stock_response', { name, stock: product.stock, lng: lang }), success: true };
                 }
 
                 if (params.query_type === 'price') {
