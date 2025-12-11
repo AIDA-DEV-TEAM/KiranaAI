@@ -5,6 +5,7 @@ import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
 import { Send, Bot, User, Loader2, Mic } from 'lucide-react';
 import { chatWithData } from '../services/api';
+import { LocalStorageService } from '../services/LocalStorageService';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useVoiceManager } from '../hooks/useVoiceManager';
