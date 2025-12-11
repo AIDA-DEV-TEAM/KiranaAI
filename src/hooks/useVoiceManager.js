@@ -564,7 +564,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             return enName.includes(query) || translations.some(t => String(t).toLowerCase().includes(query));
         });
 
-        const lang = language || 'en';
+        const lang = currentLanguage || 'en';
 
         // Use main i18n t function if available
         // Note: We use the 't' from useTranslation hook at the top of the file
