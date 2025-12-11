@@ -46,6 +46,7 @@ class ChatRequest(BaseModel):
     message: str
     history: Optional[List[ChatMessage]] = []
     language: Optional[str] = "en"
+    inventory: Optional[List[dict]] = [] # list of { name: ..., stock: ... }
 
 class ChatResponse(BaseModel):
     response: str
