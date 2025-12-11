@@ -25,11 +25,10 @@ export const AppDataProvider = ({ children }) => {
     const [salesLoaded, setSalesLoaded] = useState(false);
 
     const refreshInventory = useCallback(async (force = false) => {
-        if (inventoryLoaded && !force) return;
+        // LocalStorage is cheap, so we can refresh more often to ensure consistency across tabs
+        // if (inventoryLoaded && !force) return; 
         setLoadingInventory(true);
         try {
-            // Simulate network delay for realistic feel (optional, but keep it snappy)
-            // const data = await getInventory(); -> Replaced with LocalStorage
             const data = LocalStorageService.getInventory();
             setInventory(data);
             setInventoryLoaded(true);
@@ -38,7 +37,7 @@ export const AppDataProvider = ({ children }) => {
         } finally {
             setLoadingInventory(false);
         }
-    }, [inventoryLoaded]);
+    }, []);
 
     const refreshMandiPrices = useCallback(async (force = false) => {
         if (mandiLoaded && !force) return;
@@ -69,7 +68,8 @@ export const AppDataProvider = ({ children }) => {
     };
 
     const refreshSales = useCallback(async (force = false) => {
-        if (salesLoaded && !force) return;
+        // Remove stale check for local data
+        // if (salesLoaded && !force) return;
         setLoadingSales(true);
         try {
             // const data = await getSales(); -> Replaced with LocalStorage
@@ -81,7 +81,7 @@ export const AppDataProvider = ({ children }) => {
         } finally {
             setLoadingSales(false);
         }
-    }, [salesLoaded]);
+    }, []);
 
     // Initial load
     useEffect(() => {

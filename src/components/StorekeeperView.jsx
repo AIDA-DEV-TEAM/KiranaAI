@@ -375,6 +375,78 @@ const StorekeeperView = () => {
         }
     };
 
+    // Auto-translate effect for existing products when language changes
+    React.useEffect(() => {
+        const translateMissingProducts = async () => {
+            if (i18n.language === 'en') return;
+
+            // Find products missing translation for current language
+            const missing = products.filter(p => {
+                // If name is object and missing key
+                if (typeof p.name === 'object') {
+                    return !p.name[i18n.language];
+                }
+                // If hybrid and missing in translations
+                return !p.translations || !p.translations[i18n.language];
+            });
+
+            if (missing.length === 0) return;
+
+            console.log(`Found ${missing.length} products needing translation for ${i18n.language}`);
+
+            // Limit to batch of 5 to avoid overloading
+            const batch = missing.slice(0, 5);
+
+            // We need a bulk translation endpoint or just loop? 
+            // Current /translate/ endpoint takes 'text' and 'target_languages'.
+            // It doesn't support bulk Items. 
+            // So implementation strategy: Translate one by one or modify backend.
+            // For safety and speed without backend changes, we'll pick the top 1 most visible or just do nothing?
+            // User asked: "unknown products should be translated quickly"
+            // Let's implement a gentle background fetch.
+
+            for (const product of batch) {
+                try {
+                    const englishName = typeof product.name === 'object' ? product.name.en : product.name;
+                    const response = await api.post('/translate/', {
+                        text: englishName,
+                        target_languages: [i18n.language]
+                    });
+
+                    if (response.data?.translations) {
+                        const translation = response.data.translations[i18n.language];
+                        // Update LocalStorage directly!
+                        const updatedProduct = {
+                            ...product,
+                            // Merge translation
+                            translations: {
+                                ...(product.translations || {}),
+                                [i18n.language]: translation
+                            },
+                            // If it was an object name, update that too if we want, but keeping 'translations' field is safer for hybrid
+                        };
+                        // If existing name is object, add to it
+                        if (typeof product.name === 'object') {
+                            updatedProduct.name = { ...product.name, [i18n.language]: translation };
+                        }
+
+                        LocalStorageService.updateProduct(product.id, updatedProduct);
+                        // Trigger UI refresh?
+                        // refreshInventory(true) call might cause loop if not careful.
+                        // For now, let's just update LocalStorage. NEXT refresh will pick it up.
+                    }
+                } catch (e) {
+                    console.warn("Auto-translate failed for", product.name);
+                }
+            }
+            // After batch, trigger refresh to show new names
+            if (batch.length > 0) refreshInventory(true);
+        };
+
+        const timeoutId = setTimeout(translateMissingProducts, 1000); // 1s debounce after language switch
+        return () => clearTimeout(timeoutId);
+    }, [i18n.language, products, refreshInventory]);
+
     const getLocalizedName = (product) => {
         if (!product) return '';
 
@@ -716,8 +788,8 @@ const StorekeeperView = () => {
                                         // Create a Set of normalized inventory keywords (names and categories) for efficient matching
                                         // We confirm if the commodity is relevant to what we sell
                                         const uniqueInventoryKeywords = new Set([
-                                            ...products.map(p => p.name.toLowerCase()),
-                                            ...products.map(p => p.category.toLowerCase())
+                                            ...products.map(p => getLocalizedName(p).toLowerCase()),
+                                            ...products.map(p => (p.category || '').toLowerCase())
                                         ]);
 
                                         const livePrices = marketPrices.filter(item => {
