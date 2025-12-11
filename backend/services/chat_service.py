@@ -118,7 +118,7 @@ Language: {language}
 
         # Return the structured intent directly to the frontend
         return {
-            "response": data.get("content", ""),
+            "response": data.get("response") or data.get("content", ""),
             "speech": data.get("speech", ""),
             "action": data.get("action", "NONE"),
             "params": data.get("params", {})
