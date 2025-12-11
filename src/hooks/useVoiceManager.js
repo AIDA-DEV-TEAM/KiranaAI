@@ -558,7 +558,8 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
         // Improved Fuzzy Search
         const product = inventory.find(p => {
-            const enName = (p.name.en || p.name).toLowerCase();
+            if (!p || !p.name) return false;
+            const enName = (typeof p.name === 'object' ? (p.name.en || '') : String(p.name)).toLowerCase();
             const translations = typeof p.name === 'object' ? Object.values(p.name) : (p.translations ? Object.values(p.translations) : []);
             return enName.includes(query) || translations.some(t => String(t).toLowerCase().includes(query));
         });

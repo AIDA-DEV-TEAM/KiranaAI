@@ -111,6 +111,8 @@ async def process_chat_message(message: str, db: Session, history: list = [], la
 
     chat_session = model.start_chat(history=gemini_history)
     
+    logger.info(f"Received Inventory Context with {len(inventory)} items.")
+
     # Format Inventory Context
     inventory_context = "Current Inventory:\n"
     if inventory:

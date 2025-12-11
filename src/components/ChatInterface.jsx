@@ -83,8 +83,8 @@ const ChatInterface = () => {
                     refreshSales(true);
                 } catch (actionErr) {
                     console.error("Action execution failed:", actionErr);
-                    // Optional: Append error to response
-                    // responseText += "\n(Action failed locally)";
+                    // EXPOSE ERROR TO USER FOR DEBUGGING
+                    responseText = `[System Error] could not update data: ${actionErr.message}`;
                 }
             } else if (data.action_performed) {
                 // Fallback for legacy
