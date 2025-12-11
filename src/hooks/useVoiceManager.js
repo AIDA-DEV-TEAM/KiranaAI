@@ -609,7 +609,8 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 });
 
                 const left = product.stock - qty;
-                return { speech: `${t.remaining} ${left}` };
+                const saleMsg = t('voice_sale_response', { name: nameStr, remaining: left, lng: lang }) || `Sale recorded. Remaining: ${left}`;
+                return { speech: saleMsg };
 
             } else if (action === 'GET_INFO') {
                 // The 't' from useTranslation will be used here, shadowing the 't' from 'responses'
