@@ -377,21 +377,33 @@ const StorekeeperView = () => {
 
     const getLocalizedName = (product) => {
         if (!product) return '';
-        // If translations exist and current language is valid
+
+        // 1. Check for seeded object-style name: { en: 'Rice', hi: '...' }
+        if (typeof product.name === 'object' && product.name !== null) {
+            return product.name[i18n.language] || product.name['en'] || '';
+        }
+
+        // 2. Check for hybrid style: name="Rice", translations={ hi: '...' }
         if (product.translations && product.translations[i18n.language]) {
             return product.translations[i18n.language];
         }
-        // Fallback to name (English)
-        return product.name;
+
+        // 3. Fallback to simple string name
+        return product.name || '';
     };
 
 
     const filteredProducts = products.filter(p => {
-        // Search in English name OR translated name
         const currentName = getLocalizedName(p).toLowerCase();
-        const englishName = (p.name || '').toLowerCase();
-        const query = searchQuery.toLowerCase();
 
+        let englishName = '';
+        if (typeof p.name === 'object' && p.name !== null) {
+            englishName = (p.name.en || '').toLowerCase();
+        } else {
+            englishName = (p.name || '').toLowerCase();
+        }
+
+        const query = searchQuery.toLowerCase();
         const matchesSearch = currentName.includes(query) || englishName.includes(query);
         // Assuming API returns category, if not, we might need to adjust or mock it for now
         const matchesCategory = selectedCategory === 'All' || (p.category || 'Uncategorized') === selectedCategory;
