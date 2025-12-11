@@ -36,7 +36,10 @@ const SalesHistory = () => {
         return matchesFilter && matchesSearch;
     }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    const totalAmount = filteredSales.reduce((sum, sale) => sum + sale.total_amount, 0);
+    const totalAmount = filteredSales.reduce((sum, sale) => {
+        const amount = parseFloat(sale.total_amount);
+        return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
 
     return (
         <div className="flex flex-col h-full bg-background relative font-sans">

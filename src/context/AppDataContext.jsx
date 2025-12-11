@@ -123,7 +123,7 @@ export const AppDataProvider = ({ children }) => {
         addToCart,
         messages,
         setMessages,
-        addMessage: (msg) => setMessages(prev => [...prev, msg]),
+        addMessage: useCallback((msg) => setMessages(prev => [...prev, msg]), []),
         updateStock // Exporting helper
     };
 

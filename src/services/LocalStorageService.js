@@ -17,7 +17,7 @@ const INITIAL_INVENTORY = [
         max_stock: 200,
         shelf_position: 'A1',
         icon_name: 'wheat',
-        image_url: '/assets/products/rice.png'
+        image_url: ''
     },
     {
         id: '2',
@@ -28,7 +28,7 @@ const INITIAL_INVENTORY = [
         max_stock: 100,
         shelf_position: 'B1',
         icon_name: 'candy',
-        image_url: '/assets/products/sugar.png'
+        image_url: ''
     },
     {
         id: '3',
@@ -39,11 +39,11 @@ const INITIAL_INVENTORY = [
         max_stock: 50,
         shelf_position: 'Fridge',
         icon_name: 'milk',
-        image_url: '/assets/products/milk.png'
+        image_url: ''
     },
     {
         id: '4',
-        name: { en: 'Oil', hi: 'तेल', te: 'నూనె', ta: 'எண்ணெய்', kn: 'ಎಣ್ಣೆ', ml: 'എണ്ണ', gu: 'તેલ', mr: 'तेल', bn: 'তেল', pa: 'ਤੇਲ' },
+        name: { en: 'Oil', hi: 'तेल', te: 'నూనె', ta: 'எண்ணெய்', kn: 'ಎಣ್ಣೆ', ml: 'എണ്ണ', gu: 'તેલ', mr: 'तेल', bn: 'তেਲ', pa: 'ਤੇਲ' },
         category: 'Oil',
         price: '120',
         stock: 30,

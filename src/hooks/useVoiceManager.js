@@ -592,10 +592,14 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                     return { speech: `${t.lowStock} ${product.stock}` };
                 }
 
+                const price = parseFloat(product.price);
+                const finalPrice = isNaN(price) ? 0 : price;
+
                 LocalStorageService.addSale({
                     product_id: product.id,
+                    product_name: product.name.en || product.name, // Ensure name is preserved
                     quantity: qty,
-                    total_amount: qty * parseFloat(product.price)
+                    total_amount: qty * finalPrice
                 });
 
                 const left = product.stock - qty;

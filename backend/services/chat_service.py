@@ -77,6 +77,8 @@ def parse_gemini_json(text: str) -> dict:
             text = text[7:]
         if text.endswith("```"):
             text = text[:-3]
+        # Pre-process cleanup for common errors like ""key"
+        text = re.sub(r'""(\w+)"', r'"\1"', text)
         return json.loads(text.strip())
     except json.JSONDecodeError as e:
         logger.warning(f"JSON Parse failed: {e}. Attempting Regex Fallback.")

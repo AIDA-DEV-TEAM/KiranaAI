@@ -11,15 +11,15 @@ export const chatWithData = async (message, history = [], language = 'en') => {
     return response.data; // This contains { response, speech, action, params }
 };
 
-export const getInventory = async () => {
-    const response = await api.get('/inventory/');
-    return response.data;
-};
+// export const getInventory = async () => {
+//     const response = await api.get('/inventory/');
+//     return response.data;
+// };
 
-export const getSales = async () => {
-    const response = await api.get('/sales/');
-    return response.data;
-};
+// export const getSales = async () => {
+//     const response = await api.get('/sales/');
+//     return response.data;
+// };
 
 // getProducts is removed as it was a duplicate of getInventory
 
@@ -43,27 +43,27 @@ export const uploadVisionImage = async (file, type = 'ocr') => {
     return response.data;
 };
 
-export const importInventory = async (products) => {
-    const response = await api.post('/inventory/bulk', products);
-    return response.data;
-};
+// export const importInventory = async (products) => {
+//     const response = await api.post('/inventory/bulk', products);
+//     return response.data;
+// };
 
-export const addProduct = async (product) => {
-    const response = await api.post('/inventory/', product);
-    return response.data;
-};
+// export const addProduct = async (product) => {
+//     const response = await api.post('/inventory/', product);
+//     return response.data;
+// };
 
-export const updateProduct = async (id, product) => {
-    const response = await api.put(`/inventory/${id}`, product);
-    return response.data;
-};
+// export const updateProduct = async (id, product) => {
+//     const response = await api.put(`/inventory/${id}`, product);
+//     return response.data;
+// };
 
-export const updateShelfLocations = async (items) => {
-    const response = await api.post('/inventory/shelf/bulk', items);
-    return response.data;
-};
+// export const updateShelfLocations = async (items) => {
+//     const response = await api.post('/inventory/shelf/bulk', items);
+//     return response.data;
+// };
 
-export const addSale = async (sale) => {
-    const response = await api.post('/sales/', sale);
-    return response.data;
-};
+// export const addSale = async (sale) => {
+//     const response = await api.post('/sales/', sale);
+//     return response.data;
+// };
