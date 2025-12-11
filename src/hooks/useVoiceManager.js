@@ -123,9 +123,11 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
             if (response.action && response.action !== 'NONE') {
                 console.log('[VoiceManager] ACTION DETAILS:', response.action, response.params);
                 const actionResult = handleVoiceAction(response.action, response.params);
+
+                // CRITICAL FIX: If local action returns speech (success OR failure), prefer it over LLM speech
                 if (actionResult && actionResult.speech) {
                     speechText = actionResult.speech;
-                    // Optional: Append confirmation to text response if needed, or trust the AI's "content"
+                    console.log('[VoiceManager] Overriding LLM speech with Local Result:', speechText);
                 }
 
                 if (refreshData) {
@@ -135,7 +137,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
             setAiResponse(aiText);
 
-            // ... (rest of logic)
+            // Audio Context Logic (Music ducking etc) would go here if needed
 
             console.log('[VoiceManager] AI Response:', aiText);
 
@@ -561,18 +563,13 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
         const lang = language || 'en';
 
-        // Simple localization map for key responses
-        const responses = {
-            en: { notFound: "Product not found.", stock: "New stock:", remaining: "Remaining stock:", lowStock: "Not enough stock. Only" },
-            hi: { notFound: "Product nahi mila.", stock: "Naya stock:", remaining: "Bacha hua stock:", lowStock: "Kaafi stock nahi hai. Sirf" },
-            te: { notFound: "Product dorakaledu.", stock: "Kotha stock:", remaining: "Migilina stock:", lowStock: "Sarippoda stock ledu. Kevalam" }
-        };
-
-        const t = responses[lang] || responses['en'];
+        // Use main i18n t function if available
+        // Note: We use the 't' from useTranslation hook at the top of the file
 
         if (!product) {
             console.warn("Product not found for:", params.product);
-            return { speech: t.notFound };
+            const notFoundMsg = t('voice_product_not_found') || "Product not found.";
+            return { speech: notFoundMsg };
         }
 
         try {
@@ -583,15 +580,18 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 const newStock = Math.max(0, product.stock + qty);
                 LocalStorageService.updateProduct(product.id, { stock: newStock });
 
-                // Impressive: Just the localized result
-                return { speech: `${t.stock} ${newStock}` };
+                // Use localized success key or fallback
+                const successMsg = t('voice_stock_response', { name: product.name.en || product.name, stock: newStock, lng: lang })
+                    || `Stock updated. New stock: ${newStock}`;
+                return { speech: successMsg };
 
             } else if (action === 'RECORD_SALE') {
                 const qty = parseInt(params.quantity);
                 if (isNaN(qty)) return null;
 
                 if (product.stock < qty) {
-                    return { speech: `${t.lowStock} ${product.stock}` };
+                    const lowStockMsg = t('voice_low_stock') || `Not enough stock. Only ${product.stock} left.`;
+                    return { speech: lowStockMsg };
                 }
 
                 const price = parseFloat(product.price);
