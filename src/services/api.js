@@ -1,6 +1,6 @@
 ﻿import axios from 'axios';
 
-const API_URL = 'https://kiranaai.onrender.com';
+const API_URL = 'https://kiranaai-9t4f.onrender.com';
 
 export const api = axios.create({
     baseURL: API_URL,
