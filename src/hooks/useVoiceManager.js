@@ -543,23 +543,34 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
         }
     }, [isActive, clearTimers]);
 
-    // Action Handler
+    // Action Handler with Localization
     const handleVoiceAction = (action, params) => {
         if (!params || !params.product) return null;
 
         const inventory = LocalStorageService.getInventory();
-        // Fuzzy search for product
         const query = params.product.toLowerCase();
+
+        // Improved Fuzzy Search
         const product = inventory.find(p => {
             const enName = (p.name.en || p.name).toLowerCase();
-            // Check if translation dictionary matches
-            const translations = Object.values(p.name).map(v => v.toLowerCase());
-            return enName.includes(query) || translations.some(t => t.includes(query));
+            const translations = typeof p.name === 'object' ? Object.values(p.name) : (p.translations ? Object.values(p.translations) : []);
+            return enName.includes(query) || translations.some(t => String(t).toLowerCase().includes(query));
         });
+
+        const lang = language || 'en';
+
+        // Simple localization map for key responses
+        const responses = {
+            en: { notFound: "Product not found.", stock: "New stock:", remaining: "Remaining stock:", lowStock: "Not enough stock. Only" },
+            hi: { notFound: "Product nahi mila.", stock: "Naya stock:", remaining: "Bacha hua stock:", lowStock: "Kaafi stock nahi hai. Sirf" },
+            te: { notFound: "Product dorakaledu.", stock: "Kotha stock:", remaining: "Migilina stock:", lowStock: "Sarippoda stock ledu. Kevalam" }
+        };
+
+        const t = responses[lang] || responses['en'];
 
         if (!product) {
             console.warn("Product not found for:", params.product);
-            return { speech: "I couldn't find that product." };
+            return { speech: t.notFound };
         }
 
         try {
@@ -569,14 +580,16 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
                 const newStock = Math.max(0, product.stock + qty);
                 LocalStorageService.updateProduct(product.id, { stock: newStock });
-                return { speech: `Updated stock of ${product.name.en || product.name}. New quantity is ${newStock}.` };
+
+                // Impressive: Just the localized result
+                return { speech: `${t.stock} ${newStock}` };
 
             } else if (action === 'RECORD_SALE') {
                 const qty = parseInt(params.quantity);
                 if (isNaN(qty)) return null;
 
                 if (product.stock < qty) {
-                    return { speech: `Not enough stock. Only ${product.stock} remaining.` };
+                    return { speech: `${t.lowStock} ${product.stock}` };
                 }
 
                 LocalStorageService.addSale({
@@ -584,11 +597,13 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                     quantity: qty,
                     total_amount: qty * parseFloat(product.price)
                 });
-                return { speech: `Sold ${qty} ${product.name.en || product.name}. Remaining stock is ${product.stock - qty}.` };
+
+                const left = product.stock - qty;
+                return { speech: `${t.remaining} ${left}` };
             }
         } catch (e) {
             console.error("Action execution failed", e);
-            return { speech: "Sorry, I had trouble updating the data." };
+            return { speech: "Error updating data." };
         }
         return null;
     };

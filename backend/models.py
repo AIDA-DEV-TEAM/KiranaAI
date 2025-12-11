@@ -50,5 +50,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     speech: Optional[str] = None
-    sql_query: Optional[str] = None
+    sql_query: Optional[str] = None # Keeping for legacy/debug if needed
     action_performed: bool = False
+    action: Optional[str] = None
+    params: Optional[dict] = None
