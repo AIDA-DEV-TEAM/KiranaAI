@@ -71,15 +71,30 @@ model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROM
 def parse_gemini_json(text: str) -> dict:
     """Helper to cleanly parse JSON from Gemini's output, handling markdown blocks."""
     try:
-        data = json.loads(text)
-        return data
-    except json.JSONDecodeError:
-        # Fallback: remove markdown
-        clean_text = text.replace("```json", "").replace("```", "").strip()
-        try:
-            return json.loads(clean_text)
-        except json.JSONDecodeError:
-            return None
+        # First attempt: Clean clean parsing
+        text = text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.endswith("```"):
+            text = text[:-3]
+        return json.loads(text.strip())
+    except json.JSONDecodeError as e:
+        logger.warning(f"JSON Parse failed: {e}. Attempting Regex Fallback.")
+        # Fallback 1: Extract JSON block using regex matches { ... }
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except:
+                pass
+        
+        # Fallback 2: Manual extraction of fields if JSON is completely broken
+        # (Desperate attempt to rescue the response text)
+        response_match = re.search(r'"response":\s*"(.*?)"', text)
+        if response_match:
+            return {"response": response_match.group(1), "action": "NONE"}
+            
+        return None
 
 async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en") -> dict:
     if not api_key:
