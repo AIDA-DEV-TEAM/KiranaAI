@@ -207,9 +207,17 @@ const StorekeeperView = () => {
         try {
             // Call Sales API to record sale + deduct stock
             // Replaced with LocalStorageService
+
+            const price = parseFloat(product.price);
+            const finalPrice = isNaN(price) ? 0 : price;
+            // Ensure name is a string for storage
+            const nameStr = typeof product.name === 'object' ? (product.name.en || Object.values(product.name)[0]) : product.name;
+
             await LocalStorageService.addSale({
                 product_id: product.id,
-                quantity: quantitySold
+                product_name: nameStr,
+                quantity: quantitySold,
+                total_amount: quantitySold * finalPrice
             });
 
             // Optimistic update locally

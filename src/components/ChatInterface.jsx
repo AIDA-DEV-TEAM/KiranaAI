@@ -72,18 +72,23 @@ const ChatInterface = () => {
 
             // Execute Action if present (Text Mode Equivalence)
             if (data.action && data.action !== 'NONE') {
-                console.log("Executing Text Command Action:", data.action);
-                const result = handleVoiceAction(data.action, data.params);
+                try {
+                    console.log("Executing Text Command Action:", data.action);
+                    const result = handleVoiceAction(data.action, data.params);
 
-                // If the action generated a specific speech response (like "Stock remaining: 4"), 
-                // we might want to append it or just let the LLM's text response stand.
-                // For now, valid action execution is enough to trigger data refresh.
+                    // If the action generated a specific speech response (like "Stock remaining: 4"), 
+                    // we might want to append it or just let the LLM's text response stand.
+                    // For now, valid action execution is enough to trigger data refresh.
 
-                // Refresh data immediately
-                refreshInventory(true);
-                refreshSales(true);
-            } else if (data.action_performed) {
-                // Fallback for legacy
+                    // Refresh data immediately
+                    refreshInventory(true);
+                    refreshSales(true);
+                } catch (actionErr) {
+                    console.error("Action execution failed (non-fatal):", actionErr);
+                    // Do NOT show error bubble if response was already shown
+                }
+            } else if (data.action_performed) { // Refresh data if action was performed (Legacy)
+                // Only if not handled by action block above
                 refreshInventory(true);
                 refreshSales(true);
             }

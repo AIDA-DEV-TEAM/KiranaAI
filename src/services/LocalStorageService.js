@@ -238,20 +238,52 @@ export const LocalStorageService = {
 
     addSale: (sale) => {
         try {
+            const inventory = LocalStorageService.getInventory();
+            const product = inventory.find(p => p.id === sale.product_id);
+
+            // Validation & Self-Repair
+            if (!product && !sale.product_name) {
+                throw new Error(`Product with ID ${sale.product_id} not found.`);
+            }
+
+            const quantity = parseInt(sale.quantity) || 1;
+
+            // Name Logic: Use provided name or fallback to Inventory name (localized object or string)
+            let productName = sale.product_name;
+            if (!productName && product) {
+                productName = typeof product.name === 'object' ? (product.name.en || Object.values(product.name)[0]) : product.name;
+            }
+
+            // Price Logic: Use provided total or calculate from inventory
+            let totalAmount = parseFloat(sale.total_amount);
+            if (isNaN(totalAmount) && product) {
+                const price = parseFloat(product.price) || 0;
+                totalAmount = price * quantity;
+            }
+
+            const newSale = {
+                id: Date.now().toString(),
+                product_id: sale.product_id,
+                product_name: productName || 'Unknown Product',
+                quantity: quantity,
+                total_amount: isNaN(totalAmount) ? 0 : totalAmount,
+                timestamp: new Date().toISOString()
+            };
+
             const sales = LocalStorageService.getSales();
-            const newSale = { ...sale, id: Date.now().toString(), timestamp: new Date().toISOString() };
             const updatedSales = [newSale, ...sales];
             localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(updatedSales));
 
             // Also update stock
-            const inventory = LocalStorageService.getInventory();
-            const updatedInventory = inventory.map(item => {
-                if (item.id === sale.product_id) {
-                    return { ...item, stock: Math.max(0, item.stock - sale.quantity) };
-                }
-                return item;
-            });
-            LocalStorageService.saveInventory(updatedInventory);
+            if (product) {
+                const updatedInventory = inventory.map(item => {
+                    if (item.id === sale.product_id) {
+                        return { ...item, stock: Math.max(0, item.stock - quantity) };
+                    }
+                    return item;
+                });
+                LocalStorageService.saveInventory(updatedInventory);
+            }
 
             return newSale;
         } catch (error) {

@@ -596,10 +596,11 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
                 const price = parseFloat(product.price);
                 const finalPrice = isNaN(price) ? 0 : price;
+                const nameStr = typeof product.name === 'object' ? (product.name.en || Object.values(product.name)[0]) : product.name;
 
                 LocalStorageService.addSale({
                     product_id: product.id,
-                    product_name: product.name.en || product.name, // Ensure name is preserved
+                    product_name: nameStr, // Ensure name is preserved as string
                     quantity: qty,
                     total_amount: qty * finalPrice
                 });
