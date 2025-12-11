@@ -2,10 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import init_db
 from .seed_data import seed_default_data
-from .routes import inventory, sales, chat, mandi, vision
-
-
-
+from .routes import inventory, sales, chat, mandi, vision, translate
 
 app = FastAPI(title="Kirana Shop Talk to Data")
 
@@ -28,6 +25,7 @@ app.include_router(sales.router)
 app.include_router(chat.router)
 app.include_router(mandi.router)
 app.include_router(vision.router)
+app.include_router(translate.router)
 
 
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getInventory, getMandiPrices, getSales } from '../services/api';
+import { getMandiPrices } from '../services/api';
+import { LocalStorageService } from '../services/LocalStorageService';
 
 const AppDataContext = createContext();
 
@@ -27,7 +28,9 @@ export const AppDataProvider = ({ children }) => {
         if (inventoryLoaded && !force) return;
         setLoadingInventory(true);
         try {
-            const data = await getInventory();
+            // Simulate network delay for realistic feel (optional, but keep it snappy)
+            // const data = await getInventory(); -> Replaced with LocalStorage
+            const data = LocalStorageService.getInventory();
             setInventory(data);
             setInventoryLoaded(true);
         } catch (error) {
@@ -69,7 +72,8 @@ export const AppDataProvider = ({ children }) => {
         if (salesLoaded && !force) return;
         setLoadingSales(true);
         try {
-            const data = await getSales();
+            // const data = await getSales(); -> Replaced with LocalStorage
+            const data = LocalStorageService.getSales();
             setSalesData(data);
             setSalesLoaded(true);
         } catch (error) {
@@ -88,13 +92,21 @@ export const AppDataProvider = ({ children }) => {
 
     const refreshAllData = useCallback(async () => {
         console.log("Refreshing all app data...");
+        // Mandi prices still async, others are sync but we can await them if they become async
         await Promise.all([
-            refreshInventory(true),
-            refreshSales(true),
+            Promise.resolve(refreshInventory(true)),
+            Promise.resolve(refreshSales(true)),
             refreshMandiPrices(true)
         ]);
         console.log("All app data refreshed.");
     }, [refreshInventory, refreshSales, refreshMandiPrices]);
+
+    const updateStock = async (id, newStock) => {
+        // Optimistic update helper if needed, but components handle it nicely.
+        // Just wrapping LocalStorage update
+        LocalStorageService.updateProduct(id, { stock: newStock });
+        refreshInventory(true);
+    };
 
     const value = {
         inventory,
@@ -111,7 +123,8 @@ export const AppDataProvider = ({ children }) => {
         addToCart,
         messages,
         setMessages,
-        addMessage: (msg) => setMessages(prev => [...prev, msg])
+        addMessage: (msg) => setMessages(prev => [...prev, msg]),
+        updateStock // Exporting helper
     };
 
     return (

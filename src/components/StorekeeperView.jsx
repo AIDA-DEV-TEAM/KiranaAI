@@ -35,7 +35,10 @@ import {
     Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { addProduct, updateProduct, addSale } from '../services/api';
+// import { addProduct, updateProduct, addSale } from '../services/api'; -> Replaced
+import { LocalStorageService } from '../services/LocalStorageService';
+import { api } from '../services/api'; // For translation endpoint
+import { getInstantTranslation } from '../utils/translationDictionary';
 import { useTranslation } from 'react-i18next';
 import { useAppData } from '../context/AppDataContext';
 
@@ -87,6 +90,7 @@ const StorekeeperView = () => {
     const [editingProduct, setEditingProduct] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
+        translations: {}, // Store translations here
         category: 'Grains',
         price: '',
         stock: '',
@@ -96,6 +100,7 @@ const StorekeeperView = () => {
         image_url: ''
     });
     const [submitting, setSubmitting] = useState(false);
+    const [isTranslating, setIsTranslating] = useState(false);
 
     // Sync local state with context data
     useEffect(() => {
@@ -110,6 +115,7 @@ const StorekeeperView = () => {
         setEditingProduct(null);
         setFormData({
             name: '',
+            translations: {},
             category: 'Grains',
             price: '',
             stock: '',
@@ -125,6 +131,7 @@ const StorekeeperView = () => {
         setEditingProduct(product);
         setFormData({
             name: product.name,
+            translations: product.translations || {},
             category: product.category,
             price: product.price,
             stock: product.stock,
@@ -199,7 +206,8 @@ const StorekeeperView = () => {
         setStockLoading(prev => ({ ...prev, [product.id]: true }));
         try {
             // Call Sales API to record sale + deduct stock
-            await addSale({
+            // Replaced with LocalStorageService
+            await LocalStorageService.addSale({
                 product_id: product.id,
                 quantity: quantitySold
             });
@@ -261,10 +269,10 @@ const StorekeeperView = () => {
         try {
             const newStock = product.stock + qtyToAdd;
             // Safety check: ensure we don't exceed max unless explicitly intended (though reorder logic usually aims for max)
-            // For now, trust the qtyToAdd but we could clamp it: Math.min(newStock, maxStock) if strictly desired.
             // Given the requirement "New_Stock = Current + Added", we stick to that formula.
 
-            await updateProduct(product.id, { ...product, stock: newStock });
+            // await updateProduct(product.id, { ...product, stock: newStock }); -> Replaced
+            LocalStorageService.updateProduct(product.id, { stock: newStock });
 
             setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: newStock } : p));
             setReorderQuantities(prev => {
@@ -278,14 +286,7 @@ const StorekeeperView = () => {
         } finally {
             setReorderLoading(prev => ({ ...prev, [product.id]: false }));
         }
-    };
-
-
-
-
-
-
-    const handleSubmit = async (e) => {
+    }; const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         try {
@@ -303,9 +304,11 @@ const StorekeeperView = () => {
             };
 
             if (editingProduct) {
-                await updateProduct(editingProduct.id, payload);
+                // await updateProduct(editingProduct.id, payload);
+                LocalStorageService.updateProduct(editingProduct.id, payload);
             } else {
-                await addProduct(payload);
+                // await addProduct(payload);
+                LocalStorageService.addProduct(payload);
             }
 
             await refreshInventory(true); // Force refresh context
@@ -315,11 +318,81 @@ const StorekeeperView = () => {
             alert("Failed to save product");
         } finally {
             setSubmitting(false);
+            setIsTranslating(false);
         }
     };
 
+    // Translation Handler
+    const handleNameChange = async (e) => {
+        const newName = e.target.value;
+        const newTranslations = { ...formData.translations, en: newName };
+
+        setFormData(prev => ({ ...prev, name: newName, translations: newTranslations }));
+
+        if (!newName.trim()) return;
+
+        // 1. Try Local Dictionary (Instant)
+        const supportedLangs = ['hi', 'te', 'ta', 'kn', 'ml', 'gu', 'mr', 'bn', 'pa'];
+        let missingLangs = [];
+        let hasLocal = false;
+
+        supportedLangs.forEach(lang => {
+            const localTrans = getInstantTranslation(newName, lang);
+            if (localTrans) {
+                newTranslations[lang] = localTrans;
+                hasLocal = true;
+            } else {
+                missingLangs.push(lang);
+            }
+        });
+
+        if (hasLocal) {
+            setFormData(prev => ({ ...prev, translations: newTranslations }));
+        }
+
+        // 2. AI Fallback (Debounced)
+        if (missingLangs.length > 0) {
+            setIsTranslating(true);
+            // Simple debounce using timeout id attached to window or just let it fly for now (optimize later if needed)
+            // For stability, we'll just trigger it.
+            try {
+                const response = await api.post('/translate/', {
+                    text: newName,
+                    target_languages: missingLangs
+                });
+
+                if (response.data?.translations) {
+                    setFormData(prev => ({
+                        ...prev,
+                        translations: { ...prev.translations, ...response.data.translations }
+                    }));
+                }
+            } catch (err) {
+                console.warn("Translation failed", err);
+            } finally {
+                setIsTranslating(false);
+            }
+        }
+    };
+
+    const getLocalizedName = (product) => {
+        if (!product) return '';
+        // If translations exist and current language is valid
+        if (product.translations && product.translations[i18n.language]) {
+            return product.translations[i18n.language];
+        }
+        // Fallback to name (English)
+        return product.name;
+    };
+
+
     const filteredProducts = products.filter(p => {
-        const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+        // Search in English name OR translated name
+        const currentName = getLocalizedName(p).toLowerCase();
+        const englishName = (p.name || '').toLowerCase();
+        const query = searchQuery.toLowerCase();
+
+        const matchesSearch = currentName.includes(query) || englishName.includes(query);
         // Assuming API returns category, if not, we might need to adjust or mock it for now
         const matchesCategory = selectedCategory === 'All' || (p.category || 'Uncategorized') === selectedCategory;
         return matchesSearch && matchesCategory;
@@ -425,7 +498,9 @@ const StorekeeperView = () => {
                                         <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
                                             <div>
                                                 <div className="flex justify-between items-start">
-                                                    <h3 className="font-bold text-foreground truncate text-base">{product.name}</h3>
+                                                    <h3 className="font-bold text-foreground truncate text-base">
+                                                        {getLocalizedName(product)}
+                                                    </h3>
                                                     <button onClick={() => handleEditClick(product)} className="text-muted-foreground p-1 hover:bg-muted rounded-full">
                                                         <MoreVertical size={16} />
                                                     </button>
@@ -519,7 +594,7 @@ const StorekeeperView = () => {
                                         )}>
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <h3 className="font-semibold text-foreground">{item.name}</h3>
+                                                    <h3 className="font-semibold text-foreground">{getLocalizedName(item)}</h3>
                                                     <div className="flex gap-3 mt-1 text-sm">
                                                         <p className="text-muted-foreground">Current: <span className="font-bold text-foreground">{item.stock}</span></p>
                                                         <p className="text-muted-foreground">Target: {maxStock}</p>
@@ -588,7 +663,7 @@ const StorekeeperView = () => {
 
                                         return (
                                             <>
-                                                Priority Action: Restock <strong>{criticalItem.name}</strong> immediately.
+                                                Priority Action: Restock <strong>{getLocalizedName(criticalItem)}</strong> immediately.
                                                 You are short by <strong>{shortfall} units</strong> to meet your target of {criticalItem.max_stock || 50}.
                                             </>
                                         );
@@ -779,14 +854,17 @@ const StorekeeperView = () => {
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-muted-foreground">{t('product_name')}</label>
+                                    <label className="text-sm font-medium text-muted-foreground">
+                                        {t('product_name')}
+                                        {isTranslating && <span className="text-xs text-primary ml-2 animate-pulse">Translating...</span>}
+                                    </label>
                                     <input
                                         required
                                         type="text"
                                         placeholder="e.g. Sona Masoori Rice"
                                         className="w-full bg-muted/30 p-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                                         value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        onChange={handleNameChange}
                                     />
                                 </div>
 
