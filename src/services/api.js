@@ -6,8 +6,8 @@ export const api = axios.create({
     baseURL: API_URL,
 });
 
-export const chatWithData = async (message, history = [], language = 'en') => {
-    const response = await api.post('/chat/', { message, history, language });
+export const chatWithData = async (message, history = [], language = 'en', inventory = []) => {
+    const response = await api.post('/chat/', { message, history, language, inventory });
     return response.data; // This contains { response, speech, action, params }
 };
 

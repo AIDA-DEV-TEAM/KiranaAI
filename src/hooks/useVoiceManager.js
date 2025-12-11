@@ -108,10 +108,12 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
         try {
             console.log('[VoiceManager] Calling backend API...');
             // Send to backend chat API
+            const currentInventory = LocalStorageService.getInventory();
             const response = await chatWithData(
                 text,
                 conversationHistoryRef.current,
-                currentLanguage
+                currentLanguage,
+                currentInventory
             );
 
             console.log('[VoiceManager] Backend response received:', response);

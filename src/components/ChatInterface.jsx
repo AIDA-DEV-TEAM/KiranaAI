@@ -56,7 +56,9 @@ const ChatInterface = () => {
             }));
 
             // 15s Timeout for API call to prevent infinite loading
-            const apiCall = chatWithData(input, history, i18n.language);
+            // Pass current inventory to Backend for Context
+            const currentInventory = LocalStorageService.getInventory();
+            const apiCall = chatWithData(input, history, i18n.language, currentInventory);
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error("Request timed out")), 15000)
             );

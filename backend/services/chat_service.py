@@ -98,7 +98,7 @@ def parse_gemini_json(text: str) -> dict:
             
         return None
 
-async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en") -> dict:
+async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en", inventory: list = []) -> dict:
     if not api_key:
         logger.error("Gemini API key not configured")
         return {"response": "System Error: API Key missing.", "action": "NONE"}
@@ -111,7 +111,19 @@ async def process_chat_message(message: str, db: Session, history: list = [], la
 
     chat_session = model.start_chat(history=gemini_history)
     
+    # Format Inventory Context
+    inventory_context = "Current Inventory:\n"
+    if inventory:
+        for item in inventory:
+            name_en = item.get('name', {}).get('en', 'Unknown') if isinstance(item.get('name'), dict) else item.get('name', 'Unknown')
+            stock = item.get('stock', 0)
+            inventory_context += f"- {name_en}: {stock}\n"
+    else:
+        inventory_context += "(No inventory data available)"
+
     prompt = f"""
+{inventory_context}
+
 User: {message}
 Language: {language}
 """
