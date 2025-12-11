@@ -27,7 +27,8 @@ const ChatInterface = () => {
         error: voiceError,
         isActive: isVoiceModeActive,
         startVoiceMode,
-        stopVoiceMode
+        stopVoiceMode,
+        handleVoiceAction
     } = useVoiceManager(i18n.language, addMessage, refreshAllData);
 
     const scrollToBottom = () => {
@@ -69,9 +70,20 @@ const ChatInterface = () => {
                 sql: data.sql_query
             }]);
 
-            // Refresh data if action was performed
-            if (data.action_performed) {
-                console.log("Action performed, refreshing data...");
+            // Execute Action if present (Text Mode Equivalence)
+            if (data.action && data.action !== 'NONE') {
+                console.log("Executing Text Command Action:", data.action);
+                const result = handleVoiceAction(data.action, data.params);
+
+                // If the action generated a specific speech response (like "Stock remaining: 4"), 
+                // we might want to append it or just let the LLM's text response stand.
+                // For now, valid action execution is enough to trigger data refresh.
+
+                // Refresh data immediately
+                refreshInventory(true);
+                refreshSales(true);
+            } else if (data.action_performed) {
+                // Fallback for legacy
                 refreshInventory(true);
                 refreshSales(true);
             }

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { Capacitor } from '@capacitor/core';
@@ -14,6 +15,7 @@ import {
 import { LocalStorageService } from '../services/LocalStorageService';
 
 export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData) => {
+    const { t } = useTranslation();
     const [voiceState, setVoiceState] = useState(VOICE_STATES.IDLE);
     const [transcript, setTranscript] = useState('');
     const [aiResponse, setAiResponse] = useState('');
@@ -604,6 +606,30 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
                 const left = product.stock - qty;
                 return { speech: `${t.remaining} ${left}` };
+
+            } else if (action === 'GET_INFO') {
+                // The 't' from useTranslation will be used here, shadowing the 't' from 'responses'
+                // Assuming useTranslation is imported and 't' is destructured from it at the component level.
+                if (params.query_type === 'stock') {
+                    const name = product.name[lang] || product.name.en || product.name;
+                    return { speech: t('voice_stock_response', { name, stock: product.stock, lng: lang }) };
+                }
+
+                if (params.query_type === 'price') {
+                    const name = product.name[lang] || product.name.en || product.name;
+                    return { speech: t('voice_price_response', { name, price: product.price, lng: lang }) };
+                }
+
+                if (params.query_type === 'sales') {
+                    // Calculate today's sales
+                    const sales = LocalStorageService.getSales();
+                    const todayStr = new Date().toDateString();
+                    const todayTotal = sales
+                        .filter(s => new Date(s.timestamp).toDateString() === todayStr)
+                        .reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
+
+                    return { speech: t('voice_sales_response', { amount: todayTotal, lng: lang }) };
+                }
             }
         } catch (e) {
             console.error("Action execution failed", e);
@@ -620,6 +646,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
         isActive,
         startVoiceMode,
         stopVoiceMode,
-        interrupt
+        interrupt,
+        handleVoiceAction // Expose validation/action logic
     };
 };

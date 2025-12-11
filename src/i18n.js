@@ -63,7 +63,11 @@ const resources = {
             "live": "Live",
             "shelf": "Shelf",
             "qty": "Qty",
-            "stock_left": "Stock Left"
+            "stock_left": "Stock Left",
+            "voice_product_not_found": "Product not found.",
+            "voice_stock_response": "Current stock for {{name}} is {{stock}}",
+            "voice_price_response": "Price of {{name}} is ₹{{price}}",
+            "voice_sales_response": "Total sales today is ₹{{amount}}"
         }
     },
     hi: {
@@ -119,7 +123,11 @@ const resources = {
             "assistant": "सहायक",
             "speak_now_hint": "अब बोलें, मैं सुन रहा हूँ...",
             "processing_hint": "आपके अनुरोध को संसाधित कर रहा हूँ...",
-            "speaking_hint": "रोकने के लिए नीचे बटन टैप करें"
+            "speaking_hint": "रोकने के लिए नीचे बटन टैप करें",
+            "voice_product_not_found": "उत्पाद नहीं मिला",
+            "voice_stock_response": "{{name}} का स्टॉक {{stock}} है",
+            "voice_price_response": "{{name}} की कीमत ₹{{price}} है",
+            "voice_sales_response": "आज की कुल बिक्री ₹{{amount}} है"
         }
     },
     bn: {
@@ -175,7 +183,11 @@ const resources = {
             "assistant": "সহকারী",
             "speak_now_hint": "এখন বলুন, আমি শুনছি...",
             "processing_hint": "আপনার অনুরোধ প্রক্রিয়া করছি...",
-            "speaking_hint": "বাধা দিতে নিচের বোতাম ট্যাপ করুন"
+            "speaking_hint": "বাধা দিতে নিচের বোতাম ট্যাপ করুন",
+            "voice_product_not_found": "পণ্য পাওয়া যায়নি",
+            "voice_stock_response": "{{name}} এর স্টক {{stock}}",
+            "voice_price_response": "{{name}} এর দাম ₹{{price}}",
+            "voice_sales_response": "আজকের মোট বিক্রয় ₹{{amount}}"
         }
     },
     te: {
@@ -231,7 +243,11 @@ const resources = {
             "assistant": "సహాయకుడు",
             "speak_now_hint": "ఇప్పుడు మాట్లాడండి, నేను వింటున్నాను...",
             "processing_hint": "మీ అభ్యర్థనను ప్రాసెస్ చేస్తోంది...",
-            "speaking_hint": "అంతరాయం కలిగించడానికి దిగువ బటన్ నొక్కండి"
+            "speaking_hint": "అంతరాయం కలిగించడానికి దిగువ బటన్ నొక్కండి",
+            "voice_product_not_found": "ఉత్పత్తి కనుగొనబడలేదు",
+            "voice_stock_response": "{{name}} స్టాక్ {{stock}} ఉంది",
+            "voice_price_response": "{{name}} ధర ₹{{price}} ఉంది",
+            "voice_sales_response": "ఈ రోజు మొత్తం అమ్మకాలు ₹{{amount}}"
         }
     },
     ta: {
@@ -287,7 +303,11 @@ const resources = {
             "assistant": "உதவியாளர்",
             "speak_now_hint": "இப்போது பேசுங்கள், நான் கேட்கிறேன்...",
             "processing_hint": "உங்கள் கோரிக்கை செயல்படுத்தப்படுகிறது...",
-            "speaking_hint": "குறுக்கிட கீழே உள்ள பொத்தானை தட்டவும்"
+            "speaking_hint": "குறுக்கிட கீழே உள்ள பொத்தானை தட்டவும்",
+            "voice_product_not_found": "தயாரிப்பு காணப்படவில்லை",
+            "voice_stock_response": "{{name}} கையிருப்பு {{stock}} உள்ளது",
+            "voice_price_response": "{{name}} விலை ₹{{price}}",
+            "voice_sales_response": "இன்றைய மொத்த விற்பனை ₹{{amount}}"
         }
     },
     mr: {
@@ -343,7 +363,11 @@ const resources = {
             "assistant": "सहाय्यक",
             "speak_now_hint": "आता बोला, मी ऐकत आहे...",
             "processing_hint": "तुमची विनंती प्रक्रिया करत आहे...",
-            "speaking_hint": "व्यत्यय आणण्यासाठी खालील बटण टॅप करा"
+            "speaking_hint": "व्यत्यय आणण्यासाठी खालील बटण टॅप करा",
+            "voice_product_not_found": "उत्पादन सापडले नाही",
+            "voice_stock_response": "{{name}} चा स्टॉक {{stock}} आहे",
+            "voice_price_response": "{{name}} ची किंमत ₹{{price}} आहे",
+            "voice_sales_response": "आजची एकूण विक्री ₹{{amount}} आहे"
         }
     },
     gu: {
@@ -399,7 +423,11 @@ const resources = {
             "assistant": "સહાયક",
             "speak_now_hint": "હવે બોલો, હું સાંભળી રહ્યો છું...",
             "processing_hint": "તમારી વિનંતી પર કામ કરી રહ્યો છું...",
-            "speaking_hint": "વિક્ષેપ માટે નીચે બટન ટેપ કરો"
+            "speaking_hint": "વિક્ષેપ માટે નીચે બટન ટેપ કરો",
+            "voice_product_not_found": "ઉત્પાદન મળ્યું નથી",
+            "voice_stock_response": "{{name}} નો સ્ટોક {{stock}} છે",
+            "voice_price_response": "{{name}} ની કિંમત ₹{{price}} છે",
+            "voice_sales_response": "આજનું કુલ વેચાણ ₹{{amount}} છે"
         }
     },
     kn: {
@@ -455,7 +483,11 @@ const resources = {
             "assistant": "ಸಹಾಯಕ",
             "speak_now_hint": "ಈಗ ಮಾತನಾಡಿ, ನಾನು ಕೇಳುತ್ತಿದ್ದೇನೆ...",
             "processing_hint": "ನಿಮ್ಮ ವಿನಂತಿಯನ್ನು ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲಾಗುತ್ತಿದೆ...",
-            "speaking_hint": "ಅಡಚಣೆ ಮಾಡಲು ಕೆಳಗಿನ ಗುಂಡಿ ಒತ್ತಿರಿ"
+            "speaking_hint": "ಅಡಚಣೆ ಮಾಡಲು ಕೆಳಗಿನ ಗುಂಡಿ ಒತ್ತಿರಿ",
+            "voice_product_not_found": "ಉತ್ಪನ್ನ ಕಂಡುಬಂದಿಲ್ಲ",
+            "voice_stock_response": "{{name}} ಸ್ಟಾಕ್ {{stock}} ಇದೆ",
+            "voice_price_response": "{{name}} ಬೆಲೆ ₹{{price}}",
+            "voice_sales_response": "ಇಂದಿನ ಒಟ್ಟು ಮಾರಾಟ ₹{{amount}}"
         }
     },
     ml: {
@@ -511,7 +543,11 @@ const resources = {
             "assistant": "സഹായി",
             "speak_now_hint": "ഇപ്പോൾ സംസാരിക്കൂ, ഞാൻ കേൾക്കുന്നു...",
             "processing_hint": "നിങ്ങളുടെ അഭ്യർത്ഥന പ്രോസസ്സ് ചെയ്യുന്നു...",
-            "speaking_hint": "തടസ്സപ്പെടുത്താൻ താഴത്തെ ബട്ടൺ ടാപ്പ് ചെയ്യുക"
+            "speaking_hint": "തടസ്സപ്പെടുത്താൻ താഴത്തെ ബട്ടൺ ടാപ്പ് ചെയ്യുക",
+            "voice_product_not_found": "ഉൽപ്പന്നം കണ്ടെത്തിയില്ല",
+            "voice_stock_response": "{{name}} സ്റ്റോക്ക് {{stock}} ഉണ്ട്",
+            "voice_price_response": "{{name}} വില ₹{{price}} ആണ്",
+            "voice_sales_response": "ഇന്നത്തെ മൊത്തം വിൽപ്പന ₹{{amount}}"
         }
     },
     pa: {
@@ -567,7 +603,11 @@ const resources = {
             "assistant": "ਸਹਾਇਕ",
             "speak_now_hint": "ਹੁਣ ਬੋਲੋ, ਮੈਂ ਸੁਣ ਰਿਹਾ ਹਾਂ...",
             "processing_hint": "ਤੁਹਾਡੀ ਬੇਨਤੀ ਦੀ ਪ੍ਰਕਿਰਿਆ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ...",
-            "speaking_hint": "ਰੋਕਣ ਲਈ ਹੇਠਾਂ ਬਟਨ ਨੂੰ ਟੈਪ ਕਰੋ"
+            "speaking_hint": "ਰੋਕਣ ਲਈ ਹੇਠਾਂ ਬਟਨ ਨੂੰ ਟੈਪ ਕਰੋ",
+            "voice_product_not_found": "ਉਤਪਾਦ ਨਹੀਂ ਮਿਲਿਆ",
+            "voice_stock_response": "{{name}} ਦਾ ਸਟਾਕ {{stock}} ਹੈ",
+            "voice_price_response": "{{name}} ਦੀ ਕੀਮਤ ₹{{price}} ਹੈ",
+            "voice_sales_response": "ਅੱਜ ਦੀ ਕੁੱਲ ਵਿਕਰੀ ₹{{amount}} ਹੈ"
         }
     }
 };
