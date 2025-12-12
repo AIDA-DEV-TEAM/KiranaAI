@@ -15,28 +15,8 @@ class ProductBase(BaseModel):
 class ProductCreate(ProductBase):
     pass
 
-class Product(ProductBase):
-    id: int
+# Removed SQLAlchemy Models (Product, Sale) as we are using Local Storage only.
 
-    class Config:
-        from_attributes = True
-
-class SaleCreate(BaseModel):
-    product_id: int
-    quantity: int
-
-class Sale(BaseModel):
-    id: int
-    product_id: Optional[int] = None
-    quantity: int
-    total_amount: Optional[float] = None
-    timestamp: datetime
-
-    class Config:
-        from_attributes = True
-
-class SaleResponse(Sale):
-    product_name: Optional[str] = None
 
 class ChatMessage(BaseModel):
     role: str

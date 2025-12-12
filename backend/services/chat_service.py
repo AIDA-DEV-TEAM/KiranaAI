@@ -98,7 +98,7 @@ def parse_gemini_json(text: str) -> dict:
             
         return None
 
-async def process_chat_message(message: str, db: Session, history: list = [], language: str = "en", inventory: list = []) -> dict:
+async def process_chat_message(message: str, history: list = [], language: str = "en", inventory: list = []) -> dict:
     if not api_key:
         logger.error("Gemini API key not configured")
         return {"response": "System Error: API Key missing.", "action": "NONE"}

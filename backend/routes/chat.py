@@ -9,20 +9,13 @@ load_dotenv()
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-def get_db():
-    db = database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 @router.post("/", response_model=models.ChatResponse)
-async def chat(request: models.ChatRequest, db: Session = Depends(get_db)):
+async def chat(request: models.ChatRequest):
     try:
         # Convert Pydantic models to dicts for the service
         history = [msg.dict() for msg in request.history]
         
-        result = await process_chat_message(request.message, db, history, request.language, request.inventory)
+        result = await process_chat_message(request.message, history, request.language, request.inventory)
         return result
         
     except Exception as e:
