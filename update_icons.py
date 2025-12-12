@@ -16,12 +16,6 @@ SIZES = {
 }
 
 # Adaptive Icon Config (Canvas 108dp, Safe 66dp)
-# We map standard density buckets to the 108dp px size equivalent
-# mdpi 108dp = 108px
-# hdpi 108dp = 162px
-# xhdpi 108dp = 216px
-# xxhdpi 108dp = 324px
-# xxxhdpi 108dp = 432px
 ADAPTIVE_SIZES = {
     "mipmap-mdpi": 108,
     "mipmap-hdpi": 162,
@@ -54,11 +48,7 @@ def update_icons():
         # 2. Update colors.xml
         colors_path = os.path.join(ANDROID_RES_DIR, "values", "colors.xml")
         os.makedirs(os.path.dirname(colors_path), exist_ok=True)
-        # Simple overwrite or robust XML edit? Simple overwrite is risky if file implies other colors.
-        # But for this task, we can just ensure the color resource exists.
-        # Let's write a dedicated icon_colors.xml or check if we can append.
-        # Safe bet: Write a minimal colors icon file that won't conflict? 
-        # Actually, let's just make a new file values/icon_colors.xml
+        
         icon_colors_path = os.path.join(ANDROID_RES_DIR, "values", "icon_colors.xml")
         with open(icon_colors_path, "w") as f:
             f.write(f'''<?xml version="1.0" encoding="utf-8"?>
@@ -86,12 +76,11 @@ def update_icons():
 
         # 4. Generate Adaptive Foregrounds
         # Foreground should be the icon centered
-        # Strategy: "Full Bleed" / Zoom.
-        # We scale the icon UP to > 1.0 so that the rounded corners (transparency)
-        # are pushed OUTSIDE the canvas.
-        # This ensures the Safe Zone (center 66dp) is 100% Opaque Green.
-        # Scale 1.25 ensures we crop out the transparent corners of the source image.
-        scale_factor = 1.25
+        # Strategy: Standard Scale 1.0.
+        # This maps the 1024x1024 icon to the full 108dp canvas.
+        # Safe zone (66dp) is the center.
+        # Corners will be handled by the background color.
+        scale_factor = 1.0
         
         for folder, canvas_size in ADAPTIVE_SIZES.items():
             target_dir = os.path.join(ANDROID_RES_DIR, folder)
@@ -99,11 +88,11 @@ def update_icons():
             # Create transparent canvas
             canvas = Image.new('RGBA', (canvas_size, canvas_size), (0, 0, 0, 0))
             
-            # Resize icon -> Larger than canvas
+            # Resize icon -> Match canvas
             icon_size = int(canvas_size * scale_factor)
             resized_icon = img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
             
-            # Center it (Negative offset to crop)
+            # Center it
             offset = (canvas_size - icon_size) // 2
             canvas.paste(resized_icon, (offset, offset))
             

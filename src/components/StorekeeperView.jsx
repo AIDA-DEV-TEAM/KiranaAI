@@ -101,6 +101,7 @@ const StorekeeperView = () => {
     });
     const [submitting, setSubmitting] = useState(false);
     const [isTranslating, setIsTranslating] = useState(false);
+    const fileInputRef = React.useRef(null);
 
     // Sync local state with context data
     useEffect(() => {
@@ -898,15 +899,16 @@ const StorekeeperView = () => {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => document.getElementById('file-upload').click()}
+                                            onClick={() => fileInputRef.current?.click()}
                                             className={cn(
-                                                "flex-1 py-2 text-xs font-medium rounded-lg transition-all bg-background text-muted-foreground hover:bg-muted"
+                                                "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
+                                                formData.image_url ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
                                             )}
                                         >
                                             {t('select_photo') || "From Gallery"}
                                         </button>
                                         <input
-                                            id="file-upload"
+                                            ref={fileInputRef}
                                             type="file"
                                             accept="image/*"
                                             className="hidden"
@@ -915,22 +917,12 @@ const StorekeeperView = () => {
                                                 if (file) {
                                                     const reader = new FileReader();
                                                     reader.onloadend = () => {
-                                                        setFormData({ ...formData, image_url: reader.result }); // Base64
+                                                        setFormData({ ...formData, image_url: reader.result });
                                                     };
                                                     reader.readAsDataURL(file);
                                                 }
                                             }}
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData({ ...formData, image_url: 'https://' })}
-                                            className={cn(
-                                                "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
-                                                formData.image_url && !formData.image_url.startsWith('data:') ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
-                                            )}
-                                        >
-                                            {t('image_url')}
-                                        </button>
                                     </div>
 
                                     {!formData.image_url ? (
@@ -952,27 +944,21 @@ const StorekeeperView = () => {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2 bg-background p-2 rounded-xl border border-border focus-within:ring-2 focus-within:ring-primary/20">
-                                                <ImageIcon size={18} className="text-muted-foreground" />
-                                                <input
-                                                    type="url"
-                                                    placeholder="https://example.com/image.jpg"
-                                                    className="flex-1 bg-transparent outline-none text-sm"
-                                                    value={formData.image_url}
-                                                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                                        <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="aspect-video rounded-xl bg-black/5 overflow-hidden border border-border relative group">
+                                                <img
+                                                    src={formData.image_url}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-cover"
                                                 />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity text-white font-medium"
+                                                >
+                                                    Change Photo
+                                                </button>
                                             </div>
-                                            {formData.image_url && (
-                                                <div className="aspect-video rounded-xl bg-black/5 overflow-hidden border border-border">
-                                                    <img
-                                                        src={formData.image_url}
-                                                        alt="Preview"
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => e.target.style.display = 'none'}
-                                                    />
-                                                </div>
-                                            )}
                                         </div>
                                     )}
                                 </div>
