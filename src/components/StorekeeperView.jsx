@@ -103,6 +103,7 @@ const StorekeeperView = () => {
     });
     const [submitting, setSubmitting] = useState(false);
     const [isTranslating, setIsTranslating] = useState(false);
+    const [activeImageTab, setActiveImageTab] = useState('icon');
     const fileInputRef = React.useRef(null);
 
     // Sync local state with context data
@@ -344,7 +345,7 @@ const StorekeeperView = () => {
         try {
             const image = await Camera.getPhoto({
                 quality: 90,
-                allowEditing: false,
+                allowEditing: true,
                 resultType: CameraResultType.Base64,
                 source: CameraSource.Photos // Direct to Gallery
             });
