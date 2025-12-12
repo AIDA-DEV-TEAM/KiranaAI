@@ -65,8 +65,8 @@ Your mission is to provide an impressive, seamless voice experience that feels t
 4. **No Tech**: Do not show JSON or parameters in the `response` text. output only natural language.
 """
 
-# Using gemini-2.5-flash as requested
-model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
+# Using gemini-2.5-flash-lite as requested
+model = genai.GenerativeModel('gemini-2.5-flash-lite', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
 
 def parse_gemini_json(text: str) -> dict:
     """Helper to cleanly parse JSON from Gemini's output, handling markdown blocks."""
