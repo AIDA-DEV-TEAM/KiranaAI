@@ -1,23 +1,79 @@
 
 // Map of keywords/names to local asset paths (after bundling)
 export const DEFAULT_IMAGES = {
+    // Grains
     'rice': '/assets/defaults/rice.png',
+    'basmati': '/assets/defaults/rice.png',
+    'paddy': '/assets/defaults/rice.png',
+    'poha': '/assets/defaults/rice.png',
+
+    // Sugar/Sweet
     'sugar': '/assets/defaults/sugar.png',
+    'jaggery': '/assets/defaults/sugar.png',
+    'gud': '/assets/defaults/sugar.png',
+
+    // Oils
     'oil': '/assets/defaults/oil.png',
+    'ghee': '/assets/defaults/oil.png',
+    'butter': '/assets/defaults/oil.png',
+
+    // Dairy
     'milk': '/assets/defaults/milk.png',
     'curd': '/assets/defaults/milk.png',
+    'paneer': '/assets/defaults/milk.png',
+    'yogurt': '/assets/defaults/milk.png',
+    'cheese': '/assets/defaults/milk.png',
+
+    // Wheat/Flour
     'wheat': '/assets/defaults/wheat.png',
-    'flour': '/assets/defaults/wheat.png', // Atta
+    'flour': '/assets/defaults/wheat.png',
+    'atta': '/assets/defaults/wheat.png',
+    'maida': '/assets/defaults/wheat.png',
+    'suji': '/assets/defaults/wheat.png',
+    'rava': '/assets/defaults/wheat.png',
+
+    // Pulses (Dal)
     'dal': '/assets/defaults/dal.png',
     'pulse': '/assets/defaults/dal.png',
     'lentil': '/assets/defaults/dal.png',
+    'gram': '/assets/defaults/dal.png',
+    'rajma': '/assets/defaults/dal.png',
+    'chana': '/assets/defaults/dal.png',
+    'peas': '/assets/defaults/dal.png',
+    'bean': '/assets/defaults/dal.png',
+
+    // Spices
     'spice': '/assets/defaults/spices.png',
     'chilli': '/assets/defaults/spices.png',
     'turmeric': '/assets/defaults/spices.png',
+    'haldi': '/assets/defaults/spices.png',
+    'mirch': '/assets/defaults/spices.png',
+    'cumin': '/assets/defaults/spices.png',
+    'jeera': '/assets/defaults/spices.png',
+    'mustard': '/assets/defaults/spices.png',
+    'clove': '/assets/defaults/spices.png',
+    'cardamom': '/assets/defaults/spices.png',
+    'cinnamon': '/assets/defaults/spices.png',
+    'masala': '/assets/defaults/spices.png',
+    'pepper': '/assets/defaults/spices.png',
+
+    // Vegetables
     'veg': '/assets/defaults/vegetables.png',
     'onion': '/assets/defaults/vegetables.png',
     'potato': '/assets/defaults/vegetables.png',
     'tomato': '/assets/defaults/vegetables.png',
+    'brinjal': '/assets/defaults/vegetables.png',
+    'eggplant': '/assets/defaults/vegetables.png',
+    'okra': '/assets/defaults/vegetables.png',
+    'bhindi': '/assets/defaults/vegetables.png',
+    'cabbage': '/assets/defaults/vegetables.png',
+    'cauliflower': '/assets/defaults/vegetables.png',
+    'spinach': '/assets/defaults/vegetables.png',
+    'palak': '/assets/defaults/vegetables.png',
+    'carrot': '/assets/defaults/vegetables.png',
+    'garlic': '/assets/defaults/vegetables.png',
+    'ginger': '/assets/defaults/vegetables.png',
+    'lemon': '/assets/defaults/vegetables.png',
 };
 
 // Map of Category to fallback image
