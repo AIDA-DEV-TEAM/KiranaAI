@@ -130,7 +130,9 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 // 1. If SUCCESS: Prefer LLM speech (Natural) if available, fallback to Local
                 // 2. If FAIL: Force Local speech (Error details)
                 if (actionResult && actionResult.speech) {
-                    if (actionResult.success && response.speech) {
+                    // For Actions: Nice LLM response on success.
+                    // For Queries: Local Answer on success.
+                    if (actionResult.success && response.speech && response.action !== 'GET_INFO') {
                         speechText = response.speech; // Use Nice LLM response
                     } else {
                         speechText = actionResult.speech; // Use Local Error/Fact
@@ -624,6 +626,21 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 if (params.query_type === 'stock') {
                     const name = product.name[lang] || product.name.en || product.name;
                     return { speech: t('voice_stock_response', { name, stock: product.stock, lng: lang }), success: true };
+                }
+
+                if (params.query_type === 'sales' || params.query_type === 'profit') {
+                    const sales = LocalStorageService.getSales();
+                    const today = new Date().toDateString();
+                    const todaySales = sales.filter(s => new Date(s.timestamp).toDateString() === today);
+
+                    const totalRevenue = todaySales.reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
+                    const count = todaySales.length;
+
+                    // localized format for currency if needed, for now simple
+                    const speech = t('voice_sales_response', { amount: totalRevenue, count: count, lng: lang })
+                        || `Total sales today: ${totalRevenue}, from ${count} transactions.`;
+
+                    return { speech: speech, success: true };
                 }
 
                 if (params.query_type === 'price') {

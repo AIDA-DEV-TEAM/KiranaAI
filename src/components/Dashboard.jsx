@@ -15,7 +15,7 @@ const Dashboard = () => {
     // Optimized: eliminated blocking loader
     // if (loading) { return ... }
 
-    const lowStockItems = inventory.filter(item => item.stock < (item.max_stock || 50));
+    const lowStockItems = inventory.filter(item => item.stock <= ((item.max_stock || 50) * 0.5));
     const totalSalesToday = sales
         .filter(sale => new Date(sale.timestamp).toDateString() === new Date().toDateString())
         .reduce((sum, sale) => sum + sale.total_amount, 0);

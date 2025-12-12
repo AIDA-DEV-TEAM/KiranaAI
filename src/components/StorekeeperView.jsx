@@ -129,8 +129,14 @@ const StorekeeperView = () => {
 
     const handleEditClick = (product) => {
         setEditingProduct(product);
+        // Fix for [object Object] issue
+        let nameStr = product.name;
+        if (typeof product.name === 'object' && product.name !== null) {
+            nameStr = product.name.en || Object.values(product.name)[0] || '';
+        }
+
         setFormData({
-            name: product.name,
+            name: nameStr,
             translations: product.translations || {},
             category: product.category,
             price: product.price,
@@ -593,9 +599,6 @@ const StorekeeperView = () => {
                                                     <h3 className="font-bold text-foreground truncate text-base">
                                                         {getLocalizedName(product)}
                                                     </h3>
-                                                    <button onClick={() => handleEditClick(product)} className="text-muted-foreground p-1 hover:bg-muted rounded-full">
-                                                        <MoreVertical size={16} />
-                                                    </button>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                                                     <span>{product.category || 'General'}</span>
@@ -692,6 +695,9 @@ const StorekeeperView = () => {
                                                         <p className="text-muted-foreground">Target: {maxStock}</p>
                                                     </div>
                                                 </div>
+                                                <button onClick={() => handleEditClick(item)} className="text-muted-foreground p-1 hover:bg-muted rounded-full">
+                                                    <MoreVertical size={16} />
+                                                </button>
                                             </div>
 
                                             <div className="flex items-center justify-between border-t border-border pt-3">
@@ -889,10 +895,35 @@ const StorekeeperView = () => {
                                         </button>
                                         <button
                                             type="button"
+                                            onClick={() => document.getElementById('file-upload').click()}
+                                            className={cn(
+                                                "flex-1 py-2 text-xs font-medium rounded-lg transition-all bg-background text-muted-foreground hover:bg-muted"
+                                            )}
+                                        >
+                                            {t('select_photo') || "From Gallery"}
+                                        </button>
+                                        <input
+                                            id="file-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => {
+                                                        setFormData({ ...formData, image_url: reader.result }); // Base64
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
                                             onClick={() => setFormData({ ...formData, image_url: 'https://' })}
                                             className={cn(
                                                 "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
-                                                formData.image_url ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
+                                                formData.image_url && !formData.image_url.startsWith('data:') ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
                                             )}
                                         >
                                             {t('image_url')}
