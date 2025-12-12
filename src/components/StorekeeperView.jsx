@@ -33,7 +33,8 @@ import {
     Cigarette,
     X,
     Image as ImageIcon,
-    Upload
+    Upload,
+    Camera as CameraIcon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -362,13 +363,13 @@ const StorekeeperView = () => {
     };
 
     // Native Image Picker
-    const handleImageSelect = async () => {
+    const handleImageSelect = async (sourceMode = 'photos') => {
         try {
             const image = await Camera.getPhoto({
                 quality: 90,
-                allowEditing: true,
+                allowEditing: false, // Disable native editing to avoid "Open with" and use our custom cropper
                 resultType: CameraResultType.Base64,
-                source: CameraSource.Photos // Direct to Gallery
+                source: sourceMode === 'camera' ? CameraSource.Camera : CameraSource.Photos
             });
 
             if (image.base64String) {
@@ -379,9 +380,6 @@ const StorekeeperView = () => {
         } catch (error) {
             console.log('Image selection cancelled or failed:', error);
             // Don't alert if user just cancelled
-            if (error.message !== 'User cancelled photos app') {
-                // minimal error handling if needed
-            }
         }
     };
 
@@ -986,16 +984,30 @@ const StorekeeperView = () => {
                                     {activeImageTab === 'photo' && (
                                         <div className="animate-in fade-in slide-in-from-right-4 duration-300 h-full">
                                             {!formData.image_url ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={handleImageSelect}
-                                                    className="w-full h-48 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50 hover:border-primary/50 transition-all group"
-                                                >
-                                                    <div className="p-3 bg-background rounded-full group-hover:scale-110 transition-transform shadow-sm">
-                                                        <Upload size={24} className="text-primary" />
+                                                <div className="flex flex-col gap-3 h-full">
+                                                    <div className="flex gap-3 h-48">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleImageSelect('camera')}
+                                                            className="flex-1 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50 hover:border-primary/50 transition-all group"
+                                                        >
+                                                            <div className="p-3 bg-secondary rounded-full group-hover:scale-110 transition-transform shadow-sm">
+                                                                <CameraIcon size={24} className="text-secondary-foreground" />
+                                                            </div>
+                                                            <span className="text-xs font-medium">Take Photo</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleImageSelect('photos')}
+                                                            className="flex-1 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50 hover:border-primary/50 transition-all group"
+                                                        >
+                                                            <div className="p-3 bg-primary/10 rounded-full group-hover:scale-110 transition-transform shadow-sm">
+                                                                <ImageIcon size={24} className="text-primary" />
+                                                            </div>
+                                                            <span className="text-xs font-medium">From Gallery</span>
+                                                        </button>
                                                     </div>
-                                                    <span className="text-xs font-medium">Tap to Upload Photo</span>
-                                                </button>
+                                                </div>
                                             ) : (
                                                 <div className="aspect-video rounded-xl bg-black/5 overflow-hidden border border-border relative group">
                                                     <img
@@ -1026,6 +1038,7 @@ const StorekeeperView = () => {
                                     )}
 
                                     {/* Cropper Overlay */}
+                                    {/* Cropper Overlay */}
                                     {cropperOpen && (
                                         <div className="absolute inset-0 z-50 bg-background flex flex-col h-full animate-in fade-in duration-200">
                                             <div className="relative flex-1 bg-black w-full overflow-hidden">
@@ -1039,16 +1052,9 @@ const StorekeeperView = () => {
                                                     onZoomChange={setZoom}
                                                 />
                                             </div>
-                                            <div className="p-3 bg-card border-t border-border flex justify-between items-center z-10">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setCropperOpen(false); setTempImage(null); }}
-                                                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <div className="flex items-center gap-4 px-4">
-                                                    <span className="text-xs text-muted-foreground">Zoom</span>
+                                            <div className="px-4 py-3 bg-card border-t border-border flex flex-col gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                                                <div className="flex items-center justify-center gap-3 w-full px-2">
+                                                    <span className="text-xs font-semibold text-muted-foreground w-8">Zoom</span>
                                                     <input
                                                         type="range"
                                                         value={zoom}
@@ -1059,16 +1065,25 @@ const StorekeeperView = () => {
                                                         onChange={(e) => {
                                                             setZoom(e.target.value)
                                                         }}
-                                                        className="zoom-range h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                                                        className="flex-1 h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
                                                     />
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleCropSave}
-                                                    className="px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg shadow-sm"
-                                                >
-                                                    Done
-                                                </button>
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setCropperOpen(false); setTempImage(null); }}
+                                                        className="flex-1 px-4 py-2.5 text-sm font-semibold text-muted-foreground bg-muted/50 hover:bg-muted rounded-xl transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleCropSave}
+                                                        className="flex-1 px-4 py-2.5 text-sm font-bold bg-primary text-primary-foreground rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
+                                                    >
+                                                        Done
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
