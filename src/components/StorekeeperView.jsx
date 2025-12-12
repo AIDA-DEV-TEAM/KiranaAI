@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { getProductImage } from '../utils/imageAssets';
 
 import { LocalStorageService } from '../services/LocalStorageService';
 import { api } from '../services/api'; // For translation endpoint
@@ -631,14 +632,15 @@ const StorekeeperView = () => {
                                 {filteredProducts.length > 0 ? filteredProducts.map(product => (
                                     <div key={product.id} className="bg-card p-3 rounded-2xl shadow-sm border border-border flex items-start gap-3">
                                         <div className="w-20 h-20 bg-muted/50 rounded-xl flex items-center justify-center text-3xl shrink-0 overflow-hidden self-center">
-                                            {product.image_url ? (
-                                                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                (() => {
-                                                    const IconComponent = ICONS.find(i => i.name === product.icon_name)?.icon || Package;
-                                                    return <IconComponent className="text-muted-foreground" size={32} />;
-                                                })()
-                                            )}
+                                            {(() => {
+                                                const displayImage = getProductImage(product);
+                                                if (displayImage) {
+                                                    return <img src={displayImage} alt={product.name} className="w-full h-full object-cover" />;
+                                                }
+                                                // Fallback to Icon if absolutely no image found
+                                                const IconComponent = ICONS.find(i => i.name === product.icon_name)?.icon || Package;
+                                                return <IconComponent className="text-muted-foreground" size={32} />;
+                                            })()}
                                         </div>
                                         <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
                                             <div>
