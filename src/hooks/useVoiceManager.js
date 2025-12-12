@@ -108,9 +108,36 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
         try {
             console.log('[VoiceManager] Calling backend API...');
             // Send to backend chat API
+            // Send to backend chat API
             const currentInventory = LocalStorageService.getInventory();
+
+            // Calculate Sales Context
+            const sales = LocalStorageService.getSales();
+            const todayStr = new Date().toDateString();
+            const todaySales = sales.filter(s => new Date(s.timestamp).toDateString() === todayStr);
+            const totalRevenue = todaySales.reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
+
+            const salesDetails = todaySales.map(s =>
+                `- ${s.quantity}x ${s.product_name} (₹${s.total_amount})`
+            ).join('\n');
+
+            const locationContext = currentInventory.map(p => {
+                const name = typeof p.name === 'object' ? (p.name.en || Object.values(p.name)[0]) : p.name;
+                return `${name}: ${p.shelf_position || '?'}`;
+            }).join('; ');
+
+            const contextText = `[SYSTEM CONTEXT]
+Sales Today: Total ₹${totalRevenue}
+List:
+${salesDetails || "None"}
+
+Locations: ${locationContext}
+[/SYSTEM CONTEXT]
+
+User Spoke: ${text}`;
+
             const response = await chatWithData(
-                text,
+                contextText,
                 conversationHistoryRef.current,
                 currentLanguage,
                 currentInventory
@@ -601,7 +628,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                 if (isNaN(qty)) return null;
 
                 if (product.stock < qty) {
-                    const lowStockMsg = t('voice_low_stock') || `Not enough stock. Only ${product.stock} left.`;
+                    const lowStockMsg = t('voice_low_stock', { stock: product.stock }) || `Not enough stock. Only ${product.stock} left.`;
                     return { speech: lowStockMsg, success: false };
                 }
 
@@ -628,7 +655,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                     return { speech: t('voice_stock_response', { name, stock: product.stock, lng: lang }), success: true };
                 }
 
-                if (params.query_type === 'sales' || params.query_type === 'profit') {
+                if (params.query_type === 'sales' || params.query_type === 'sales_today' || params.query_type === 'profit') {
                     const sales = LocalStorageService.getSales();
                     const today = new Date().toDateString();
                     const todaySales = sales.filter(s => new Date(s.timestamp).toDateString() === today);
@@ -638,7 +665,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
 
                     // localized format for currency if needed, for now simple
                     const speech = t('voice_sales_response', { amount: totalRevenue, count: count, lng: lang })
-                        || `Total sales today: ${totalRevenue}, from ${count} transactions.`;
+                        || `Total sales today: ${totalRevenue}`;
 
                     return { speech: speech, success: true };
                 }
@@ -648,16 +675,7 @@ export const useVoiceManager = (currentLanguage = 'en', addMessage, refreshData)
                     return { speech: t('voice_price_response', { name, price: product.price, lng: lang }) };
                 }
 
-                if (params.query_type === 'sales') {
-                    // Calculate today's sales
-                    const sales = LocalStorageService.getSales();
-                    const todayStr = new Date().toDateString();
-                    const todayTotal = sales
-                        .filter(s => new Date(s.timestamp).toDateString() === todayStr)
-                        .reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
 
-                    return { speech: t('voice_sales_response', { amount: todayTotal, lng: lang }) };
-                }
             }
         } catch (e) {
             console.error("Action execution failed", e);

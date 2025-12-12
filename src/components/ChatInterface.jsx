@@ -59,8 +59,43 @@ const ChatInterface = () => {
             // 15s Timeout for API call to prevent infinite loading
             // Pass current inventory to Backend for Context
             const currentInventory = LocalStorageService.getInventory();
-            console.log("Chat sending inventory items:", currentInventory ? currentInventory.length : 'null');
-            const apiCall = chatWithData(input, history, i18n.language, currentInventory);
+
+            // Calculate Sales Context with Item Details
+            const sales = LocalStorageService.getSales();
+            const todayStr = new Date().toDateString();
+            const todaySales = sales.filter(s => new Date(s.timestamp).toDateString() === todayStr);
+            const totalRevenue = todaySales.reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
+
+            const salesDetails = todaySales.map(s =>
+                `- ${s.quantity}x ${s.product_name} (₹${s.total_amount}) at ${new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+            ).join('\n');
+
+            // Location Context
+            const locationContext = currentInventory.map(p => {
+                const name = typeof p.name === 'object' ? (p.name.en || p.name[i18n.language]) : p.name;
+                return `${name}: ${p.shelf_position || 'Unknown Shelf'}`;
+            }).join('; ');
+
+            // Rich System Context Injection
+            const contextMessage = `[SYSTEM CONTEXT]
+Current Time: ${new Date().toLocaleTimeString()}
+Sales Today: Total ₹${totalRevenue}
+Transaction Log:
+${salesDetails || "No sales yet today."}
+
+Product Locations: ${locationContext}
+
+INSTRUCTIONS:
+1. If asked about sales, summarize the Transaction Log. Use a Markdown Table if there are multiple items.
+2. If asked about location/shelf, use the Product Locations data.
+3. Format amounts in Bold (e.g. **₹500**).
+[/SYSTEM CONTEXT]
+
+User Info: Language=${i18n.language}
+User Query: ${input}`;
+
+            console.log("Chat sending detailed context");
+            const apiCall = chatWithData(contextMessage, history, i18n.language, currentInventory);
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error("Request timed out")), 15000)
             );
@@ -224,6 +259,18 @@ const ChatInterface = () => {
                         </div>
                     </div>
                 ))}
+                {/* Live Transcript Bubble */}
+                {voiceState === 'listening' && transcript && (
+                    <div className="flex gap-3 max-w-[90%] md:max-w-[80%] ml-auto flex-row-reverse animate-in fade-in duration-300">
+                        <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0 shadow-sm border border-border/50">
+                            <Mic size={16} className="animate-pulse" />
+                        </div>
+                        <div className="p-3.5 rounded-2xl text-[15px] shadow-sm leading-relaxed bg-primary/10 text-foreground/80 rounded-tr-sm border border-primary/20 italic">
+                            {transcript}...
+                        </div>
+                    </div>
+                )}
+
                 {isLoading && (
                     <div className="flex gap-4 animate-in fade-in duration-300">
                         <div className="w-8 h-8 rounded-xl bg-card text-foreground flex items-center justify-center shrink-0 shadow-sm border border-border">

@@ -68,6 +68,8 @@ const resources = {
             "voice_stock_response": "Current stock for {{name}} is {{stock}}",
             "voice_price_response": "Price of {{name}} is ₹{{price}}",
             "voice_sales_response": "Total sales today is ₹{{amount}}",
+            "voice_sale_response": "Sale recorded for {{name}}. Remaining stock: {{remaining}}",
+            "voice_low_stock": "Not enough stock. Only {{stock}} left.",
             "chat_welcome_message": "Hello! I can help you analyze your shop data. Ask me questions like \"How much rice do we have?\" or \"What are the total sales today?\""
         }
     },
