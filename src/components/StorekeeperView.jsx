@@ -31,10 +31,29 @@ import {
     Beer,
     Wine,
     Cigarette,
+    CheckCircle,
+    Milk,
+    Apple,
+    Carrot,
+    Beef,
+    Wheat,
+    Candy,
+    Droplet,
+    UtensilsCrossed,
+    Fish,
+    IceCream,
+    Pizza,
+    Sandwich,
+    Coffee,
+    Beer,
+    Wine,
+    Cigarette,
     X,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Upload
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 // import { addProduct, updateProduct, addSale } from '../services/api'; -> Replaced
 import { LocalStorageService } from '../services/LocalStorageService';
 import { api } from '../services/api'; // For translation endpoint
@@ -334,6 +353,30 @@ const StorekeeperView = () => {
         } finally {
             setSubmitting(false);
             setIsTranslating(false);
+        }
+    };
+
+    // Native Image Picker
+    const handleImageSelect = async () => {
+        try {
+            const image = await Camera.getPhoto({
+                quality: 90,
+                allowEditing: false,
+                resultType: CameraResultType.Base64,
+                source: CameraSource.Photos // Direct to Gallery
+            });
+
+            if (image.base64String) {
+                // Capacitor returns just the base64 string, we need to prepend the data type
+                const imageUrl = `data:image/${image.format};base64,${image.base64String}`;
+                setFormData(prev => ({ ...prev, image_url: imageUrl }));
+            }
+        } catch (error) {
+            console.log('Image selection cancelled or failed:', error);
+            // Don't alert if user just cancelled
+            if (error.message !== 'User cancelled photos app') {
+                // minimal error handling if needed
+            }
         }
     };
 
@@ -883,6 +926,7 @@ const StorekeeperView = () => {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
                             {/* Icon/Image Selector */}
+                            {/* Icon/Image Selector */}
                             <div className="space-y-3">
                                 <label className="text-sm font-medium text-muted-foreground">{t('product_visual')}</label>
                                 <div className="bg-muted/30 p-4 rounded-2xl border border-border">
@@ -899,7 +943,9 @@ const StorekeeperView = () => {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => fileInputRef.current?.click()}
+                                            onClick={() => {
+                                                if (!formData.image_url) handleImageSelect();
+                                            }}
                                             className={cn(
                                                 "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
                                                 formData.image_url ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
@@ -907,42 +953,41 @@ const StorekeeperView = () => {
                                         >
                                             {t('select_photo') || "From Gallery"}
                                         </button>
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                    const reader = new FileReader();
-                                                    reader.onloadend = () => {
-                                                        setFormData({ ...formData, image_url: reader.result });
-                                                    };
-                                                    reader.readAsDataURL(file);
-                                                }
-                                            }}
-                                        />
                                     </div>
 
                                     {!formData.image_url ? (
-                                        <div className="grid grid-cols-5 gap-2">
-                                            {ICONS.map((item) => (
-                                                <button
-                                                    key={item.name}
-                                                    type="button"
-                                                    onClick={() => setFormData({ ...formData, icon_name: item.name })}
-                                                    className={cn(
-                                                        "aspect-square flex flex-col items-center justify-center gap-1 rounded-xl transition-all",
-                                                        formData.icon_name === item.name
-                                                            ? "bg-primary text-primary-foreground shadow-md scale-105"
-                                                            : "bg-background text-muted-foreground hover:bg-muted hover:scale-105"
-                                                    )}
-                                                >
-                                                    <item.icon size={20} />
-                                                </button>
-                                            ))}
-                                        </div>
+                                        <>
+                                            {/* Icon Grid */}
+                                            <div className="grid grid-cols-5 gap-2 mb-4">
+                                                {ICONS.map((item) => (
+                                                    <button
+                                                        key={item.name}
+                                                        type="button"
+                                                        onClick={() => setFormData({ ...formData, icon_name: item.name })}
+                                                        className={cn(
+                                                            "aspect-square flex flex-col items-center justify-center gap-1 rounded-xl transition-all",
+                                                            formData.icon_name === item.name
+                                                                ? "bg-primary text-primary-foreground shadow-md scale-105"
+                                                                : "bg-background text-muted-foreground hover:bg-muted hover:scale-105"
+                                                        )}
+                                                    >
+                                                        <item.icon size={20} />
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* Dashed Upload Box */}
+                                            <button
+                                                type="button"
+                                                onClick={handleImageSelect}
+                                                className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50 hover:border-primary/50 transition-all group"
+                                            >
+                                                <div className="p-3 bg-background rounded-full group-hover:scale-110 transition-transform shadow-sm">
+                                                    <Upload size={24} className="text-primary" />
+                                                </div>
+                                                <span className="text-xs font-medium">Click to Upload Photo</span>
+                                            </button>
+                                        </>
                                     ) : (
                                         <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
                                             <div className="aspect-video rounded-xl bg-black/5 overflow-hidden border border-border relative group">
@@ -951,12 +996,25 @@ const StorekeeperView = () => {
                                                     alt="Preview"
                                                     className="w-full h-full object-cover"
                                                 />
+                                                {/* Remove Button */}
                                                 <button
                                                     type="button"
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                    className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity text-white font-medium"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setFormData({ ...formData, image_url: '' });
+                                                    }}
+                                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors z-10"
                                                 >
-                                                    Change Photo
+                                                    <X size={16} />
+                                                </button>
+
+                                                {/* Change Overlay */}
+                                                <button
+                                                    type="button"
+                                                    onClick={handleImageSelect}
+                                                    className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <span className="bg-white/90 text-black px-4 py-2 rounded-full text-xs font-bold shadow-lg">Change Photo</span>
                                                 </button>
                                             </div>
                                         </div>
