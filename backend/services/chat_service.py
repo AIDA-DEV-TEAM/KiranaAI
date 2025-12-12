@@ -2,8 +2,7 @@ import os
 import json
 import re
 import google.generativeai as genai
-from sqlalchemy.orm import Session
-from sqlalchemy import text
+
 from dotenv import load_dotenv
 import logging
 import traceback

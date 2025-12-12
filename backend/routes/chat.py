@@ -1,7 +1,6 @@
 import os
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from .. import database, models
+from .. import models
 from ..services.chat_service import process_chat_message
 from dotenv import load_dotenv
 
