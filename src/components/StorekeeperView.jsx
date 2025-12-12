@@ -599,6 +599,9 @@ const StorekeeperView = () => {
                                                     <h3 className="font-bold text-foreground truncate text-base">
                                                         {getLocalizedName(product)}
                                                     </h3>
+                                                    <button onClick={() => handleEditClick(product)} className="text-muted-foreground p-1 hover:bg-muted rounded-full">
+                                                        <MoreVertical size={16} />
+                                                    </button>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                                                     <span>{product.category || 'General'}</span>
