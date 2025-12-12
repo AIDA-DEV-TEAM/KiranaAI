@@ -67,7 +67,8 @@ const resources = {
             "voice_product_not_found": "Product not found.",
             "voice_stock_response": "Current stock for {{name}} is {{stock}}",
             "voice_price_response": "Price of {{name}} is ₹{{price}}",
-            "voice_sales_response": "Total sales today is ₹{{amount}}"
+            "voice_sales_response": "Total sales today is ₹{{amount}}",
+            "chat_welcome_message": "Hello! I can help you analyze your shop data. Ask me questions like \"How much rice do we have?\" or \"What are the total sales today?\""
         }
     },
     hi: {
@@ -127,7 +128,8 @@ const resources = {
             "voice_product_not_found": "उत्पाद नहीं मिला",
             "voice_stock_response": "{{name}} का स्टॉक {{stock}} है",
             "voice_price_response": "{{name}} की कीमत ₹{{price}} है",
-            "voice_sales_response": "आज की कुल बिक्री ₹{{amount}} है"
+            "voice_sales_response": "आज की कुल बिक्री ₹{{amount}} है",
+            "chat_welcome_message": "नमस्ते! मैं आपकी दुकान के डेटा का विश्लेषण करने में मदद कर सकता हूँ। मुझसे 'हमारे पास कितना चावल है?' या 'आज की कुल बिक्री क्या है?' जैसे सवाल पूछें।"
         }
     },
     bn: {
@@ -187,7 +189,8 @@ const resources = {
             "voice_product_not_found": "পণ্য পাওয়া যায়নি",
             "voice_stock_response": "{{name}} এর স্টক {{stock}}",
             "voice_price_response": "{{name}} এর দাম ₹{{price}}",
-            "voice_sales_response": "আজকের মোট বিক্রয় ₹{{amount}}"
+            "voice_sales_response": "আজকের মোট বিক্রয় ₹{{amount}}",
+            "chat_welcome_message": "হ্যালো! আমি আপনাকে আপনার দোকানের ডেটা বিশ্লেষণ করতে সাহায্য করতে পারি। আমাকে 'আমাদের কাছে কত চাল আছে?' বা 'আজকের মোট বিক্রয় কত?' এর মতো প্রশ্ন জিজ্ঞাসা করুন।"
         }
     },
     te: {
@@ -247,7 +250,8 @@ const resources = {
             "voice_product_not_found": "ఉత్పత్తి కనుగొనబడలేదు",
             "voice_stock_response": "{{name}} స్టాక్ {{stock}} ఉంది",
             "voice_price_response": "{{name}} ధర ₹{{price}} ఉంది",
-            "voice_sales_response": "ఈ రోజు మొత్తం అమ్మకాలు ₹{{amount}}"
+            "voice_sales_response": "ఈ రోజు మొత్తం అమ్మకాలు ₹{{amount}}",
+            "chat_welcome_message": "హలో! మీ షాపు డేటాను విశ్లేషించడానికి నేను మీకు సహాయపడగలను. 'మన దగ్గర ఎంత బియ్యం ఉంది?' లేదా 'ఈ రోజు మొత్తం అమ్మకాలు ఎంత?' వంటి ప్రశ్నలు నన్ను అడగండి."
         }
     },
     ta: {
@@ -307,7 +311,8 @@ const resources = {
             "voice_product_not_found": "தயாரிப்பு காணப்படவில்லை",
             "voice_stock_response": "{{name}} கையிருப்பு {{stock}} உள்ளது",
             "voice_price_response": "{{name}} விலை ₹{{price}}",
-            "voice_sales_response": "இன்றைய மொத்த விற்பனை ₹{{amount}}"
+            "voice_sales_response": "இன்றைய மொத்த விற்பனை ₹{{amount}}",
+            "chat_welcome_message": "வணக்கம்! உங்கள் கடைத் தரவை ஆய்வு செய்ய நான் உதவ முடியும். 'எங்களிடம் எவ்வளவு அரிசி உள்ளது?' அல்லது 'இன்றைய மொத்த விற்பனை என்ன?' போன்ற கேள்விகளை என்னிடம் கேளுங்கள்."
         }
     },
     mr: {
@@ -367,7 +372,8 @@ const resources = {
             "voice_product_not_found": "उत्पादन सापडले नाही",
             "voice_stock_response": "{{name}} चा स्टॉक {{stock}} आहे",
             "voice_price_response": "{{name}} ची किंमत ₹{{price}} आहे",
-            "voice_sales_response": "आजची एकूण विक्री ₹{{amount}} आहे"
+            "voice_sales_response": "आजची एकूण विक्री ₹{{amount}} आहे",
+            "chat_welcome_message": "नमस्कार! मी तुम्हाला तुमच्या दुकानाच्या डेटाचे विश्लेषण करण्यास मदत करू शकतो. मला 'आपल्याकडे किती तांदूळ आहे?' किंवा 'आजची एकूण विक्री किती आहे?' यासारखे प्रश्न विचारा."
         }
     },
     gu: {
@@ -427,7 +433,8 @@ const resources = {
             "voice_product_not_found": "ઉત્પાદન મળ્યું નથી",
             "voice_stock_response": "{{name}} નો સ્ટોક {{stock}} છે",
             "voice_price_response": "{{name}} ની કિંમત ₹{{price}} છે",
-            "voice_sales_response": "આજનું કુલ વેચાણ ₹{{amount}} છે"
+            "voice_sales_response": "આજનું કુલ વેચાણ ₹{{amount}} છે",
+            "chat_welcome_message": "નમસ્તે! હું તમને તમારા દુકાન ડેટાનું વિશ્લેષણ કરવામાં મદદ કરી શકું છું. મને 'આપણી પાસે કેટલા ચોખા છે?' અથવા 'આજનું કુલ વેચાણ શું છે?' જેવા પ્રશ્નો પૂછો."
         }
     },
     kn: {
@@ -487,7 +494,8 @@ const resources = {
             "voice_product_not_found": "ಉತ್ಪನ್ನ ಕಂಡುಬಂದಿಲ್ಲ",
             "voice_stock_response": "{{name}} ಸ್ಟಾಕ್ {{stock}} ಇದೆ",
             "voice_price_response": "{{name}} ಬೆಲೆ ₹{{price}}",
-            "voice_sales_response": "ಇಂದಿನ ಒಟ್ಟು ಮಾರಾಟ ₹{{amount}}"
+            "voice_sales_response": "ಇಂದಿನ ಒಟ್ಟು ಮಾರಾಟ ₹{{amount}}",
+            "chat_welcome_message": "ನಮಸ್ಕಾರ! ನಿಮ್ಮ ಅಂಗಡಿಯ ಡೇಟಾವನ್ನು ವಿಶ್ಲೇಷಿಸಲು ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡಬಹುದು. 'ನಮ್ಮಲ್ಲಿ ಎಷ್ಟು ಅಕ್ಕಿ ಇದೆ?' ಅಥವಾ 'ಇಂದಿನ ಒಟ್ಟು ಮಾರಾಟ ಎಷ್ಟು?' ಅಂತಹ ಪ್ರಶ್ನೆಗಳನ್ನು ನನ್ನನ್ನು ಕೇಳಿ."
         }
     },
     ml: {
@@ -547,7 +555,8 @@ const resources = {
             "voice_product_not_found": "ഉൽപ്പന്നം കണ്ടെത്തിയില്ല",
             "voice_stock_response": "{{name}} സ്റ്റോക്ക് {{stock}} ഉണ്ട്",
             "voice_price_response": "{{name}} വില ₹{{price}} ആണ്",
-            "voice_sales_response": "ഇന്നത്തെ മൊത്തം വിൽപ്പന ₹{{amount}}"
+            "voice_sales_response": "ഇന്നത്തെ മൊത്തം വിൽപ്പന ₹{{amount}}",
+            "chat_welcome_message": "ഹലോ! നിങ്ങളുടെ ഷോപ്പ് ഡാറ്റ വിശകലനം ചെയ്യാൻ എനിക്ക് നിങ്ങളെ സഹായിക്കാനാകും. 'നമുക്ക് എത്ര അരിയുണ്ട്?' അല്ലെങ്കിൽ 'ഇന്നത്തെ മൊത്തം വിൽപ്പന എത്രയാണ്?' തുടങ്ങിയ ചോദ്യങ്ങൾ എന്നോട് ചോദിക്കൂ."
         }
     },
     pa: {
@@ -607,7 +616,8 @@ const resources = {
             "voice_product_not_found": "ਉਤਪਾਦ ਨਹੀਂ ਮਿਲਿਆ",
             "voice_stock_response": "{{name}} ਦਾ ਸਟਾਕ {{stock}} ਹੈ",
             "voice_price_response": "{{name}} ਦੀ ਕੀਮਤ ₹{{price}} ਹੈ",
-            "voice_sales_response": "ਅੱਜ ਦੀ ਕੁੱਲ ਵਿਕਰੀ ₹{{amount}} ਹੈ"
+            "voice_sales_response": "ਅੱਜ ਦੀ ਕੁੱਲ ਵਿਕਰੀ ₹{{amount}} ਹੈ",
+            "chat_welcome_message": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡੀ ਦੁਕਾਨ ਦੇ ਡਾਟੇ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰਨ ਵਿੱਚ ਤੁਹਾਡੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ। ਮੇਰੇ ਤੋਂ 'ਸਾਡੇ ਕੋਲ ਕਿੰਨੇ ਚੌਲ ਹਨ?' ਜਾਂ 'ਅੱਜ ਦੀ ਕੁੱਲ ਵਿਕਰੀ ਕੀ ਹੈ?' ਵਰਗੇ ਸਵਾਲ ਪੁੱਛੋ।"
         }
     }
 };

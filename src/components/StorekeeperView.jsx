@@ -41,6 +41,8 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { LocalStorageService } from '../services/LocalStorageService';
 import { api } from '../services/api'; // For translation endpoint
 import { getInstantTranslation } from '../utils/translationDictionary';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/cropImage';
 import { useTranslation } from 'react-i18next';
 import { useAppData } from '../context/AppDataContext';
 
@@ -101,6 +103,29 @@ const StorekeeperView = () => {
     const [isTranslating, setIsTranslating] = useState(false);
     const [activeImageTab, setActiveImageTab] = useState('icon');
     const fileInputRef = React.useRef(null);
+
+    // Cropping State
+    const [tempImage, setTempImage] = useState(null);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [cropperOpen, setCropperOpen] = useState(false);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+    const onCropComplete = (croppedArea, croppedAreaPixels) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    };
+
+    const handleCropSave = async () => {
+        try {
+            const croppedImage = await getCroppedImg(tempImage, croppedAreaPixels);
+            setFormData(prev => ({ ...prev, image_url: croppedImage }));
+            setCropperOpen(false);
+            setTempImage(null);
+        } catch (e) {
+            console.error(e);
+            alert("Failed to crop image");
+        }
+    };
 
     // Sync local state with context data
     useEffect(() => {
@@ -347,9 +372,9 @@ const StorekeeperView = () => {
             });
 
             if (image.base64String) {
-                // Capacitor returns just the base64 string, we need to prepend the data type
                 const imageUrl = `data:image/${image.format};base64,${image.base64String}`;
-                setFormData(prev => ({ ...prev, image_url: imageUrl }));
+                setTempImage(imageUrl);
+                setCropperOpen(true);
             }
         } catch (error) {
             console.log('Image selection cancelled or failed:', error);
@@ -909,92 +934,140 @@ const StorekeeperView = () => {
                             {/* Icon/Image Selector */}
                             <div className="space-y-3">
                                 <label className="text-sm font-medium text-muted-foreground">{t('product_visual')}</label>
-                                <div className="bg-muted/30 p-4 rounded-2xl border border-border">
+                                <div className="bg-muted/30 p-4 rounded-2xl border border-border relative overflow-hidden min-h-[300px]">
+
+                                    {/* Tabs */}
                                     <div className="flex gap-2 mb-4">
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, image_url: '' })}
+                                            onClick={() => setActiveImageTab('icon')}
                                             className={cn(
                                                 "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
-                                                !formData.image_url ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
+                                                activeImageTab === 'icon' ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
                                             )}
                                         >
                                             {t('select_icon')}
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => {
-                                                if (!formData.image_url) handleImageSelect();
-                                            }}
+                                            onClick={() => setActiveImageTab('photo')}
                                             className={cn(
                                                 "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
-                                                formData.image_url ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
+                                                activeImageTab === 'photo' ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-muted-foreground hover:bg-muted"
                                             )}
                                         >
                                             {t('select_photo') || "From Gallery"}
                                         </button>
                                     </div>
 
-                                    {!formData.image_url ? (
-                                        <>
-                                            {/* Icon Grid */}
-                                            <div className="grid grid-cols-5 gap-2 mb-4">
-                                                {ICONS.map((item) => (
-                                                    <button
-                                                        key={item.name}
-                                                        type="button"
-                                                        onClick={() => setFormData({ ...formData, icon_name: item.name })}
-                                                        className={cn(
-                                                            "aspect-square flex flex-col items-center justify-center gap-1 rounded-xl transition-all",
-                                                            formData.icon_name === item.name
-                                                                ? "bg-primary text-primary-foreground shadow-md scale-105"
-                                                                : "bg-background text-muted-foreground hover:bg-muted hover:scale-105"
-                                                        )}
-                                                    >
-                                                        <item.icon size={20} />
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {/* Dashed Upload Box */}
-                                            <button
-                                                type="button"
-                                                onClick={handleImageSelect}
-                                                className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50 hover:border-primary/50 transition-all group"
-                                            >
-                                                <div className="p-3 bg-background rounded-full group-hover:scale-110 transition-transform shadow-sm">
-                                                    <Upload size={24} className="text-primary" />
-                                                </div>
-                                                <span className="text-xs font-medium">Click to Upload Photo</span>
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
-                                            <div className="aspect-video rounded-xl bg-black/5 overflow-hidden border border-border relative group">
-                                                <img
-                                                    src={formData.image_url}
-                                                    alt="Preview"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                {/* Remove Button */}
+                                    {/* Tab Content */}
+                                    {activeImageTab === 'icon' && (
+                                        <div className="grid grid-cols-5 gap-2 animate-in fade-in slide-in-from-left-4 duration-300">
+                                            {ICONS.map((item) => (
                                                 <button
+                                                    key={item.name}
                                                     type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setFormData({ ...formData, image_url: '' });
+                                                    onClick={() => {
+                                                        setFormData({ ...formData, icon_name: item.name, image_url: '' });
                                                     }}
-                                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors z-10"
+                                                    className={cn(
+                                                        "aspect-square flex flex-col items-center justify-center gap-1 rounded-xl transition-all",
+                                                        formData.icon_name === item.name && !formData.image_url
+                                                            ? "bg-primary text-primary-foreground shadow-md scale-105"
+                                                            : "bg-background text-muted-foreground hover:bg-muted hover:scale-105"
+                                                    )}
                                                 >
-                                                    <X size={16} />
+                                                    <item.icon size={20} />
                                                 </button>
+                                            ))}
+                                        </div>
+                                    )}
 
-                                                {/* Change Overlay */}
+                                    {activeImageTab === 'photo' && (
+                                        <div className="animate-in fade-in slide-in-from-right-4 duration-300 h-full">
+                                            {!formData.image_url ? (
                                                 <button
                                                     type="button"
                                                     onClick={handleImageSelect}
-                                                    className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="w-full h-48 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50 hover:border-primary/50 transition-all group"
                                                 >
-                                                    <span className="bg-white/90 text-black px-4 py-2 rounded-full text-xs font-bold shadow-lg">Change Photo</span>
+                                                    <div className="p-3 bg-background rounded-full group-hover:scale-110 transition-transform shadow-sm">
+                                                        <Upload size={24} className="text-primary" />
+                                                    </div>
+                                                    <span className="text-xs font-medium">Tap to Upload Photo</span>
+                                                </button>
+                                            ) : (
+                                                <div className="aspect-video rounded-xl bg-black/5 overflow-hidden border border-border relative group">
+                                                    <img
+                                                        src={formData.image_url}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setFormData({ ...formData, image_url: '' });
+                                                        }}
+                                                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors z-10"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleImageSelect}
+                                                        className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <span className="bg-white/90 text-black px-4 py-2 rounded-full text-xs font-bold shadow-lg">Change Photo</span>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Cropper Overlay */}
+                                    {cropperOpen && (
+                                        <div className="absolute inset-0 z-50 bg-background flex flex-col h-full animate-in fade-in duration-200">
+                                            <div className="relative flex-1 bg-black w-full overflow-hidden">
+                                                <Cropper
+                                                    image={tempImage}
+                                                    crop={crop}
+                                                    zoom={zoom}
+                                                    aspect={1}
+                                                    onCropChange={setCrop}
+                                                    onCropComplete={onCropComplete}
+                                                    onZoomChange={setZoom}
+                                                />
+                                            </div>
+                                            <div className="p-3 bg-card border-t border-border flex justify-between items-center z-10">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setCropperOpen(false); setTempImage(null); }}
+                                                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <div className="flex items-center gap-4 px-4">
+                                                    <span className="text-xs text-muted-foreground">Zoom</span>
+                                                    <input
+                                                        type="range"
+                                                        value={zoom}
+                                                        min={1}
+                                                        max={3}
+                                                        step={0.1}
+                                                        aria-labelledby="Zoom"
+                                                        onChange={(e) => {
+                                                            setZoom(e.target.value)
+                                                        }}
+                                                        className="zoom-range h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCropSave}
+                                                    className="px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg shadow-sm"
+                                                >
+                                                    Done
                                                 </button>
                                             </div>
                                         </div>

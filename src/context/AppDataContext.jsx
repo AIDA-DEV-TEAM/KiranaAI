@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { getMandiPrices } from '../services/api';
 import { LocalStorageService } from '../services/LocalStorageService';
 
+import { useTranslation } from 'react-i18next';
+
 const AppDataContext = createContext();
 
 export const useAppData = () => {
@@ -9,12 +11,22 @@ export const useAppData = () => {
 };
 
 export const AppDataProvider = ({ children }) => {
+    const { t, i18n } = useTranslation();
     const [inventory, setInventory] = useState([]);
     const [mandiPrices, setMandiPrices] = useState([]);
     const [salesData, setSalesData] = useState([]);
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: 'Hello! I can help you analyze your shop data. Ask me questions like "How much rice do we have?" or "What are the total sales today?"' }
+        { role: 'assistant', content: t('chat_welcome_message') || 'Hello! I can help you analyze your shop data. Ask me questions like "How much rice do we have?" or "What are the total sales today?"' }
     ]);
+
+    // Update welcome message when language changes
+    useEffect(() => {
+        if (messages.length === 1 && messages[0].role === 'assistant') {
+            setMessages([
+                { role: 'assistant', content: t('chat_welcome_message') || 'Hello! I can help you analyze your shop data. Ask me questions like "How much rice do we have?" or "What are the total sales today?"' }
+            ]);
+        }
+    }, [i18n.language, t]);
 
     const [loadingInventory, setLoadingInventory] = useState(false);
     const [loadingMandi, setLoadingMandi] = useState(false);
