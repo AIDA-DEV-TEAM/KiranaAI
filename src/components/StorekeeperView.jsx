@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-// import { addProduct, updateProduct, addSale } from '../services/api'; -> Replaced
+
 import { LocalStorageService } from '../services/LocalStorageService';
 import { api } from '../services/api'; // For translation endpoint
 import { getInstantTranslation } from '../utils/translationDictionary';
@@ -59,11 +59,6 @@ const ICONS = [
     { name: 'pizza', icon: Pizza, label: 'Fast Food' },
     { name: 'coffee', icon: Coffee, label: 'Beverage' },
 ];
-
-
-
-// Mock Data removed for real API integration
-
 const CATEGORIES = ['All', 'Grains', 'Pulses', 'Oil', 'Flour', 'Spices', 'Dairy', 'Snacks', 'Essentials'];
 const SHELF_POSITIONS = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'D1', 'D2', 'Front', 'Counter', 'Storage'];
 
@@ -72,6 +67,7 @@ const StorekeeperView = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const { inventory, mandiPrices, loadingInventory, loadingMandi, refreshInventory, refreshSales, addToCart } = useAppData();
+
     const [products, setProducts] = useState([]);
     const [marketPrices, setMarketPrices] = useState([]);
     const { t, i18n } = useTranslation();
@@ -216,7 +212,7 @@ const StorekeeperView = () => {
         setStockLoading(prev => ({ ...prev, [product.id]: true }));
         try {
             // Call Sales API to record sale + deduct stock
-            // Replaced with LocalStorageService
+
 
             const price = parseFloat(product.price);
             const finalPrice = isNaN(price) ? 0 : price;
@@ -289,7 +285,7 @@ const StorekeeperView = () => {
             // Safety check: ensure we don't exceed max unless explicitly intended (though reorder logic usually aims for max)
             // Given the requirement "New_Stock = Current + Added", we stick to that formula.
 
-            // await updateProduct(product.id, { ...product, stock: newStock }); -> Replaced
+
             LocalStorageService.updateProduct(product.id, { stock: newStock });
 
             setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: newStock } : p));
@@ -322,10 +318,10 @@ const StorekeeperView = () => {
             };
 
             if (editingProduct) {
-                // await updateProduct(editingProduct.id, payload);
+
                 LocalStorageService.updateProduct(editingProduct.id, payload);
             } else {
-                // await addProduct(payload);
+
                 LocalStorageService.addProduct(payload);
             }
 
