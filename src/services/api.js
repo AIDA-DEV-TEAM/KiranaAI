@@ -26,11 +26,32 @@ export const chatWithData = async (message, history = [], language = 'en', inven
 
 export const getMandiPrices = async () => {
     try {
-        const response = await api.get('/mandi/prices');
-        return response.data;
+        console.log("Fetching simulated Mandi prices from CSV...");
+        // Use fetch API to load the file from public folder
+        const response = await fetch('/mandi_data.csv');
+        if (!response.ok) throw new Error("Failed to load CSV");
+
+        const text = await response.text();
+
+        // Simple CSV Parser
+        const rows = text.split('\n').filter(r => r.trim() !== '');
+        const headers = rows[0].split(',').map(h => h.trim());
+
+        const prices = rows.slice(1).map(row => {
+            const values = row.split(',').map(v => v.trim());
+            if (values.length !== headers.length) return null;
+
+            const item = {};
+            headers.forEach((header, index) => {
+                item[header] = values[index];
+            });
+            return item;
+        }).filter(item => item !== null);
+
+        return { prices };
     } catch (error) {
         console.error("Failed to fetch mandi prices", error);
-        return { prices: [] }; // Return empty structure on error
+        return { prices: [] };
     }
 };
 

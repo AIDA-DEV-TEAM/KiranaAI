@@ -157,12 +157,23 @@ User Spoke: ${text}`;
                 // 1. If SUCCESS: Prefer LLM speech (Natural) if available, fallback to Local
                 // 2. If FAIL: Force Local speech (Error details)
                 if (actionResult && actionResult.speech) {
-                    // For Actions: Nice LLM response on success.
-                    // For Queries: Local Answer on success.
-                    if (actionResult.success && response.speech && response.action !== 'GET_INFO') {
-                        speechText = response.speech; // Use Nice LLM response
+                    // For RECORD_SALE, we MUST use the local speech because it contains accurate "Remaining Stock"
+                    // The LLM response is often just "I've passed that to the system" or guesses the stock wrong.
+                    if (response.action === 'RECORD_SALE') {
+                        speechText = actionResult.speech;
+                    }
+                    // For GET_INFO, use local speech (Fact)
+                    else if (response.action === 'GET_INFO') {
+                        speechText = actionResult.speech;
+                    }
+                    // For others, if success, maybe use LLM speech? 
+                    // Actually, consistent behavior is better. Let's use local if available and success.
+                    // But LLM might be nicer "I have updated the stock". Local: "Stock updated: 55".
+                    // Let's stick to safe local for now for data integrity.
+                    else if (actionResult.success && response.speech) {
+                        speechText = response.speech;
                     } else {
-                        speechText = actionResult.speech; // Use Local Error/Fact
+                        speechText = actionResult.speech;
                     }
                     console.log('[VoiceManager] Final Speech:', speechText);
                 }
@@ -170,6 +181,12 @@ User Spoke: ${text}`;
                 if (refreshData) {
                     await refreshData(true);
                 }
+            }
+
+            // Sync Visual Text with Spoken Text for consistency
+            // If we modified speechText (e.g. to include stock kv), update aiText too
+            if (speechText !== response.speech) {
+                aiText = speechText;
             }
 
             setAiResponse(aiText);
@@ -643,8 +660,11 @@ User Spoke: ${text}`;
                     total_amount: qty * finalPrice
                 });
 
-                const left = product.stock - qty;
-                const saleMsg = t('voice_sale_response', { name: nameStr, remaining: left, lng: lang }) || `Sale recorded. Remaining: ${left}`;
+                const left = Math.max(0, product.stock - qty);
+                LocalStorageService.updateProduct(product.id, { stock: left });
+
+                const saleMsg = t('voice_sale_response', { name: nameStr, remaining: left, lng: lang })
+                    || `Sale recorded for ${nameStr}. Remaining stock: ${left}`;
                 return { speech: saleMsg, success: true };
 
             } else if (action === 'GET_INFO') {

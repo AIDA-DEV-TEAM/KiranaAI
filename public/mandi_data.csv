@@ -1,0 +1,15 @@
+state,district,market,commodity,variety,arrival_date,min_price,max_price,modal_price
+Maharashtra,Pune,Pune,Rice,Basmati,15/12/2025,4500,5500,5000
+Maharashtra,Pune,Pune,Wheat,Lokwan,15/12/2025,2800,3200,3000
+Maharashtra,Pune,Pune,Sugar,M-30,15/12/2025,3400,3600,3500
+Maharashtra,Pune,Pune,Jaggery,Standard,15/12/2025,3800,4200,4000
+Maharashtra,Pune,Pune,Tur Dal,Red,15/12/2025,9500,10500,10000
+Maharashtra,Pune,Pune,Moong Dal,Green,15/12/2025,8500,9500,9000
+Maharashtra,Pune,Pune,Groundnut Oil,Refined,15/12/2025,14000,15000,14500
+Maharashtra,Pune,Pune,Onion,Red,15/12/2025,1800,2200,2000
+Maharashtra,Pune,Pune,Potato,Jyoti,15/12/2025,1200,1600,1400
+Maharashtra,Pune,Pune,Tomato,Hybrid,15/12/2025,1500,2500,2000
+Maharashtra,Pune,Pune,Tea,Leaf,15/12/2025,25000,35000,30000
+Maharashtra,Pune,Pune,Coffee,Beans,15/12/2025,40000,50000,45000
+Maharashtra,Pune,Pune,Salt,Common,15/12/2025,1500,2000,1800
+Maharashtra,Pune,Pune,Milk,Cow,15/12/2025,3000,3500,3200

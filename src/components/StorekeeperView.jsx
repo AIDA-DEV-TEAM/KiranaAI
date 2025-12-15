@@ -925,11 +925,21 @@ const StorekeeperView = () => {
                                             const wholesalePerKg = mandiPrice / 100;
                                             const suggestedRetail = wholesalePerKg * (1 + marginPercent / 100);
 
+                                            // Find matching inventory product to get localized name
+                                            const matchingProduct = products.find(p => {
+                                                const pName = (typeof p.name === 'object' ? p.name.en : p.name).toLowerCase();
+                                                const pCat = (p.category || '').toLowerCase();
+                                                const comm = item.commodity.toLowerCase();
+                                                return pName.includes(comm) || comm.includes(pName) || pCat === comm;
+                                            });
+
+                                            const displayName = matchingProduct ? getLocalizedName(matchingProduct) : item.commodity;
+
                                             return (
                                                 <tr key={index} className="hover:bg-muted/50 transition-colors">
                                                     <td className="px-4 py-3 font-medium text-foreground">
                                                         <div className="flex items-center gap-2">
-                                                            {item.commodity}
+                                                            {displayName}
                                                             <span className="bg-green-500/10 text-green-600 text-[10px] font-bold px-1.5 py-0.5 rounded">{t('live')}</span>
                                                         </div>
                                                         <div className="text-[10px] text-muted-foreground font-normal">{item.market}</div>
