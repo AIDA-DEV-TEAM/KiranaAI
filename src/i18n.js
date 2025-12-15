@@ -77,7 +77,31 @@ const resources = {
             "voice_sales_response": "Total sales today is ₹{{amount}}",
             "voice_sale_response": "Sale recorded for {{name}}. Remaining stock: {{remaining}}",
             "voice_low_stock": "Not enough stock. Only {{stock}} left.",
-            "chat_welcome_message": "Hello! I can help you analyze your shop data. Ask me questions like \"How much rice do we have?\" or \"What are the total sales today?\""
+            "voice_low_stock": "Not enough stock. Only {{stock}} left.",
+            "chat_welcome_message": "Hello! I can help you analyze your shop data. Ask me questions like \"How much rice do we have?\" or \"What are the total sales today?\"",
+
+            // Settings & Contact - Added to fix underscores
+            "app_language": "App Language",
+            "dark_mode": "Dark Mode",
+            "toggle_theme": "Toggle theme appearance",
+            "get_help_support": "Get help and support",
+            "sales_history": "Sales History",
+
+            // Contact Us
+            "call_us": "Call Us",
+            "visit_us": "Visit Us",
+            "send_message": "Send Message",
+            "message_sent": "Message Sent",
+            "message_sent_desc": "We have received your message and will get back to you shortly.",
+            "send_another": "Send Another Message",
+            "your_name": "Your Name",
+            "your_email": "Your Email",
+            "how_can_we_help": "How can we help you?",
+
+            // Store / Alerts
+            "confirm_sale": "Confirm Sale",
+            "no_stock_found": "No Stock Found",
+            "stock_exceeds_max": "Stock cannot exceed Max Stock!"
         }
     },
     hi: {
