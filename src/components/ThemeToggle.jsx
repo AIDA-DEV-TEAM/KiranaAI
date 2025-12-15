@@ -6,16 +6,13 @@ const ThemeToggle = ({ className }) => {
     const [theme, setTheme] = useState('light');
 
     useEffect(() => {
-        // Check for saved theme or system preference
-        const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+        // Synchronize local state with the actual DOM state on mount
+        // This prevents the toggle from checking localStorage again and potentially overriding 
+        // the current session state if it was changed elsewhere or if we just want to reflect current reality.
+        if (document.documentElement.classList.contains('dark')) {
             setTheme('dark');
-            document.documentElement.classList.add('dark');
         } else {
             setTheme('light');
-            document.documentElement.classList.remove('dark');
         }
     }, []);
 

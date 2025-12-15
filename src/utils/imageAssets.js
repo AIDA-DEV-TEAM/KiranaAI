@@ -74,6 +74,34 @@ export const DEFAULT_IMAGES = {
     'garlic': '/assets/defaults/vegetables.png',
     'ginger': '/assets/defaults/vegetables.png',
     'lemon': '/assets/defaults/vegetables.png',
+
+    // Salt
+    'salt': '/assets/defaults/salt.png',
+    'namak': '/assets/defaults/salt.png',
+
+    // Snacks
+    'chip': '/assets/defaults/snacks.png',
+    'biscuit': '/assets/defaults/snacks.png',
+    'cookie': '/assets/defaults/snacks.png',
+    'noodle': '/assets/defaults/snacks.png',
+    'snack': '/assets/defaults/snacks.png',
+    'maggie': '/assets/defaults/snacks.png',
+
+    // Beverages
+    'tea': '/assets/defaults/beverages.png',
+    'chai': '/assets/defaults/beverages.png',
+    'coffee': '/assets/defaults/beverages.png',
+    'drink': '/assets/defaults/beverages.png',
+    'juice': '/assets/defaults/beverages.png',
+
+    // Cleaning / Household
+    'soap': '/assets/defaults/cleaning.png',
+    'detergent': '/assets/defaults/cleaning.png',
+    'surf': '/assets/defaults/cleaning.png',
+    'wash': '/assets/defaults/cleaning.png',
+    'clean': '/assets/defaults/cleaning.png',
+    'paste': '/assets/defaults/cleaning.png',
+    'brush': '/assets/defaults/cleaning.png',
 };
 
 // Map of Category to fallback image
@@ -85,6 +113,11 @@ export const CATEGORY_IMAGES = {
     'Spices': '/assets/defaults/spices.png',
     'Dairy': '/assets/defaults/milk.png',
     'Veg': '/assets/defaults/vegetables.png',
+    'Beverages': '/assets/defaults/beverages.png',
+    'Snacks': '/assets/defaults/snacks.png',
+    'Cleaning': '/assets/defaults/cleaning.png',
+    'Household': '/assets/defaults/cleaning.png',
+    'Personal Care': '/assets/defaults/cleaning.png', // Fallback to cleaning for now or generate specific if needed
 };
 
 /**

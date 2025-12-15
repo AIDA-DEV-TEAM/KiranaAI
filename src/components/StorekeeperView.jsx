@@ -74,6 +74,7 @@ const StorekeeperView = () => {
 
     const [products, setProducts] = useState([]);
     const [marketPrices, setMarketPrices] = useState([]);
+    const [marginPercent, setMarginPercent] = useState(20);
     const { t, i18n } = useTranslation();
 
     // Swipe State
@@ -829,55 +830,85 @@ const StorekeeperView = () => {
                 {/* Screen 3: Live Prices */}
                 {activeTab === 'prices' && (
                     <div className="px-2 py-4 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                        <div className="flex items-center gap-2 mb-2">
-                            <TrendingUp className="text-green-500" size={20} />
-                            <h2 className="text-lg font-bold text-foreground">
-                                {t('market_intelligence')}
-                                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                                    {new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                                </span>
-                            </h2>
+                        <div className="flex flex-col gap-4 mb-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp className="text-green-500" size={20} />
+                                    <h2 className="text-lg font-bold text-foreground">
+                                        {t('market_intelligence')}
+                                    </h2>
+                                </div>
+                                <div className="text-sm font-medium text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                                    {new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                                </div>
+                            </div>
+
+                            {/* Margin Input */}
+                            <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex items-center justify-between gap-4">
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-foreground">{t('profit_margin')} (%)</span>
+                                    <span className="text-xs text-muted-foreground">{t('adjust_margin_hint')}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={marginPercent}
+                                        onChange={(e) => setMarginPercent(Math.max(0, parseInt(e.target.value) || 0))}
+                                        className="w-20 bg-muted/50 p-2 rounded-lg text-center font-bold text-lg outline-none focus:ring-2 focus:ring-primary/20"
+                                    />
+                                    <span className="text-muted-foreground font-bold">%</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border">
                                     <tr>
-                                        <th className="px-4 py-3">Item</th>
-                                        <th className="px-4 py-3">Market</th>
-                                        <th className="px-4 py-3">Price (₹/q)</th>
-                                        <th className="px-4 py-3 text-right">Date</th>
+                                        <th className="px-4 py-3">{t('item') || 'Item'}</th>
+                                        <th className="px-4 py-3">{t('mandi_price_q')}</th>
+                                        <th className="px-4 py-3 text-primary">{t('suggested_retail_price')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
                                     {(() => {
-                                        // Create a Set of normalized inventory keywords (names and categories) for efficient matching
-                                        // We confirm if the commodity is relevant to what we sell
-                                        const uniqueInventoryKeywords = new Set([
-                                            ...products.map(p => getLocalizedName(p).toLowerCase()),
-                                            ...products.map(p => (p.category || '').toLowerCase())
-                                        ]);
+                                        // Robust matching: Collect ALL names (English, localized, synonyms) to match API data
+                                        const uniqueInventoryKeywords = new Set();
+                                        products.forEach(p => {
+                                            // 1. English Name (Often the primary match for API)
+                                            if (typeof p.name === 'object') {
+                                                if (p.name.en) uniqueInventoryKeywords.add(p.name.en.toLowerCase());
+                                                // Current language
+                                                if (p.name[i18n.language]) uniqueInventoryKeywords.add(p.name[i18n.language].toLowerCase());
+                                            } else if (typeof p.name === 'string') {
+                                                uniqueInventoryKeywords.add(p.name.toLowerCase());
+                                            }
+
+                                            // 2. Translations (if available)
+                                            if (p.translations) {
+                                                Object.values(p.translations).forEach(t => uniqueInventoryKeywords.add(t.toLowerCase()));
+                                            }
+
+                                            // 3. Category
+                                            if (p.category) uniqueInventoryKeywords.add(p.category.toLowerCase());
+                                        });
 
                                         const livePrices = marketPrices.filter(item => {
-                                            // 1. Validity Check
                                             if (!item.arrival_date || !item.commodity) return false;
-
-                                            // 2. Inventory Match Check
                                             const commodity = item.commodity.toLowerCase();
                                             const isRelevant = Array.from(uniqueInventoryKeywords).some(keyword =>
                                                 keyword.includes(commodity) || commodity.includes(keyword)
                                             );
-
                                             if (!isRelevant) return false;
-
-                                            // 3. Price Validity (User also asked for "Live" previously, keeping valid price check)
                                             return parseFloat(item.modal_price) > 0;
                                         });
 
                                         if (livePrices.length === 0) {
                                             return (
                                                 <tr>
-                                                    <td colSpan="4" className="px-4 py-8 text-center text-muted-foreground">
+                                                    <td colSpan="3" className="px-4 py-8 text-center text-muted-foreground">
                                                         {loadingMandi ? <Loader2 className="animate-spin mx-auto" /> : (
                                                             <div className="flex flex-col items-center gap-2">
                                                                 <p>{t('no_sales') || "No relevant market data found."}</p>
@@ -889,22 +920,32 @@ const StorekeeperView = () => {
                                             );
                                         }
 
-                                        return livePrices.map((item, index) => (
-                                            <tr key={index} className="hover:bg-muted/50 transition-colors">
-                                                <td className="px-4 py-3 font-medium text-foreground">
-                                                    <div className="flex items-center gap-2">
-                                                        {item.commodity}
-                                                        <span className="bg-green-500/10 text-green-600 text-[10px] font-bold px-1.5 py-0.5 rounded">{t('live')}</span>
-                                                    </div>
-                                                    <div className="text-[10px] text-muted-foreground font-normal">{item.market}</div>
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground">{item.district}</td>
-                                                <td className="px-4 py-3 font-bold text-primary">₹{item.modal_price}</td>
-                                                <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                                                    {item.arrival_date}
-                                                </td>
-                                            </tr>
-                                        ));
+                                        return livePrices.map((item, index) => {
+                                            const mandiPrice = parseFloat(item.modal_price);
+                                            const wholesalePerKg = mandiPrice / 100;
+                                            const suggestedRetail = wholesalePerKg * (1 + marginPercent / 100);
+
+                                            return (
+                                                <tr key={index} className="hover:bg-muted/50 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-foreground">
+                                                        <div className="flex items-center gap-2">
+                                                            {item.commodity}
+                                                            <span className="bg-green-500/10 text-green-600 text-[10px] font-bold px-1.5 py-0.5 rounded">{t('live')}</span>
+                                                        </div>
+                                                        <div className="text-[10px] text-muted-foreground font-normal">{item.market}</div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-muted-foreground">₹{item.modal_price}</td>
+                                                    <td className="px-4 py-3 font-bold text-primary">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-base">₹{suggestedRetail.toFixed(1)}</span>
+                                                            <span className="text-[10px] text-muted-foreground font-normal">
+                                                                ({t('base_price')}: ₹{wholesalePerKg.toFixed(1)} + {marginPercent}%)
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        });
                                     })()}
                                 </tbody>
                             </table>

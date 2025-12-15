@@ -62,9 +62,9 @@ const Dashboard = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex overflow-x-auto gap-4 pb-2 snap-x snap-mandatory md:grid md:grid-cols-3 md:pb-0 hide-scrollbar">
                 {stats.map((stat, index) => (
-                    <div key={index} className="bg-card p-6 rounded-2xl shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
+                    <div key={index} className="min-w-[280px] md:min-w-0 flex-1 snap-center bg-card p-6 rounded-2xl shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
                         <div className="flex items-center justify-between mb-4">
                             <div className={cn("p-3 rounded-xl", stat.bg, stat.color)}>
                                 <stat.icon size={24} />
@@ -81,13 +81,7 @@ const Dashboard = () => {
             {/* Recent Sales Table */}
             <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
                 <div className="p-6 border-b border-border flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-foreground">{t('recent_sales')}</h3>
-                    <button
-                        onClick={() => navigate('/sales')}
-                        className="text-sm text-primary font-medium hover:underline"
-                    >
-                        {t('view_all')}
-                    </button>
+                    <h3 className="text-lg font-semibold text-foreground">{t('todays_sales')}</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
@@ -95,28 +89,30 @@ const Dashboard = () => {
                             <tr>
                                 <th className="px-6 py-4 font-medium">Product</th>
                                 <th className="px-6 py-4 font-medium">Quantity</th>
-                                <th className="px-6 py-4 font-medium">Amount</th>
+                                <th className="px-6 py-4 font-medium">Price</th>
                                 <th className="px-6 py-4 font-medium">Time</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {sales.slice(0, 5).map((sale) => (
-                                <tr key={sale.id} className="hover:bg-muted/50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium text-foreground">{sale.product_name || `Product #${sale.product_id}`}</div>
-                                        <div className="text-xs text-muted-foreground">ID: #{sale.id}</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-muted-foreground">{sale.quantity}</td>
-                                    <td className="px-6 py-4 font-medium text-foreground">₹{sale.total_amount}</td>
-                                    <td className="px-6 py-4 text-muted-foreground">
-                                        <div className="flex items-center gap-1.5">
-                                            <Clock size={14} />
-                                            {new Date(sale.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {sales.length === 0 && (
+                            {sales
+                                .filter(sale => new Date(sale.timestamp).toDateString() === new Date().toDateString()) // Ensure only today's sales
+                                .map((sale) => (
+                                    <tr key={sale.id} className="hover:bg-muted/50 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="font-medium text-foreground">{sale.product_name || `Product #${sale.product_id}`}</div>
+                                            <div className="text-xs text-muted-foreground">ID: #{sale.id}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-muted-foreground">{sale.quantity}</td>
+                                        <td className="px-6 py-4 font-medium text-foreground">₹{sale.total_amount}</td>
+                                        <td className="px-6 py-4 text-muted-foreground">
+                                            <div className="flex items-center gap-1.5">
+                                                <Clock size={14} />
+                                                {new Date(sale.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            {sales.filter(sale => new Date(sale.timestamp).toDateString() === new Date().toDateString()).length === 0 && (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
                                         {t('no_sales')}

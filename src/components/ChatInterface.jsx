@@ -70,10 +70,10 @@ const ChatInterface = () => {
                 `- ${s.quantity}x ${s.product_name} (₹${s.total_amount}) at ${new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
             ).join('\n');
 
-            // Location Context
-            const locationContext = currentInventory.map(p => {
+            // Inventory Context (Name, Stock, Shelf)
+            const inventoryContext = currentInventory.map(p => {
                 const name = typeof p.name === 'object' ? (p.name.en || p.name[i18n.language]) : p.name;
-                return `${name}: ${p.shelf_position || 'Unknown Shelf'}`;
+                return `${name} (Stock: ${p.stock}, Shelf: ${p.shelf_position || 'N/A'})`;
             }).join('; ');
 
             // Rich System Context Injection
@@ -83,12 +83,15 @@ Sales Today: Total ₹${totalRevenue}
 Transaction Log:
 ${salesDetails || "No sales yet today."}
 
-Product Locations: ${locationContext}
+Inventory Data: ${inventoryContext}
 
 INSTRUCTIONS:
-1. If asked about sales, summarize the Transaction Log. Use a Markdown Table if there are multiple items.
-2. If asked about location/shelf, use the Product Locations data.
-3. Format amounts in Bold (e.g. **₹500**).
+1. **SUMMARY FIRST**: Always start with the most important summary (e.g. "Sold 5 items for ₹200") before listing details.
+2. **ACCURACY CONTEXT**: Use ONLY the provided Inventory and Sales data. Do not make up numbers.
+3. **STOCK INFO**: If answering about a sale or product, explicitly mention the **Remaining Stock** (e.g. "Sale recorded. You have 12 packs remaining.").
+4. **TONE**: Be natural, professional, and concise. Avoid robotic phrases.
+5. If listing sales, use a clean Markdown Table.
+6. Format amounts in Bold (**₹500**).
 [/SYSTEM CONTEXT]
 
 User Info: Language=${i18n.language}
