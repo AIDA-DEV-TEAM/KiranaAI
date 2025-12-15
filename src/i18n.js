@@ -163,6 +163,7 @@ const resources = {
             "voice_stock_response": "{{name}} का स्टॉक {{stock}} है",
             "voice_price_response": "{{name}} की कीमत ₹{{price}} है",
             "voice_sales_response": "आज की कुल बिक्री ₹{{amount}} है",
+            "voice_sale_response": "{{name}} के लिए बिक्री रिकॉर्ड की गई। शेष स्टॉक: {{remaining}}",
             "chat_welcome_message": "नमस्ते! मैं आपकी दुकान के डेटा का विश्लेषण करने में मदद कर सकता हूँ। मुझसे 'हमारे पास कितना चावल है?' या 'आज की कुल बिक्री क्या है?' जैसे सवाल पूछें।"
         }
     },
@@ -225,6 +226,7 @@ const resources = {
             "voice_stock_response": "{{name}} এর স্টক {{stock}}",
             "voice_price_response": "{{name}} এর দাম ₹{{price}}",
             "voice_sales_response": "আজকের মোট বিক্রয় ₹{{amount}}",
+            "voice_sale_response": "{{name}} এর জন্য বিক্রয় রেকর্ড করা হয়েছে। বাকি স্টক: {{remaining}}",
             "chat_welcome_message": "হ্যালো! আমি আপনাকে আপনার দোকানের ডেটা বিশ্লেষণ করতে সাহায্য করতে পারি। আমাকে 'আমাদের কাছে কত চাল আছে?' বা 'আজকের মোট বিক্রয় কত?' এর মতো প্রশ্ন জিজ্ঞাসা করুন।"
         }
     },
@@ -287,6 +289,7 @@ const resources = {
             "voice_stock_response": "{{name}} స్టాక్ {{stock}} ఉంది",
             "voice_price_response": "{{name}} ధర ₹{{price}} ఉంది",
             "voice_sales_response": "ఈ రోజు మొత్తం అమ్మకాలు ₹{{amount}}",
+            "voice_sale_response": "{{name}} కోసం అమ్మకం నమోదు చేయబడింది. మిగిలిన స్టాక్: {{remaining}}",
             "chat_welcome_message": "హలో! మీ షాపు డేటాను విశ్లేషించడానికి నేను మీకు సహాయపడగలను. 'మన దగ్గర ఎంత బియ్యం ఉంది?' లేదా 'ఈ రోజు మొత్తం అమ్మకాలు ఎంత?' వంటి ప్రశ్నలు నన్ను అడగండి."
         }
     },
@@ -349,6 +352,7 @@ const resources = {
             "voice_stock_response": "{{name}} கையிருப்பு {{stock}} உள்ளது",
             "voice_price_response": "{{name}} விலை ₹{{price}}",
             "voice_sales_response": "இன்றைய மொத்த விற்பனை ₹{{amount}}",
+            "voice_sale_response": "{{name}}-க்கான விற்பனை பதிவு செய்யப்பட்டது. மீதമുള്ള இருப்பு: {{remaining}}",
             "chat_welcome_message": "வணக்கம்! உங்கள் கடைத் தரவை ஆய்வு செய்ய நான் உதவ முடியும். 'எங்களிடம் எவ்வளவு அரிசி உள்ளது?' அல்லது 'இன்றைய மொத்த விற்பனை என்ன?' போன்ற கேள்விகளை என்னிடம் கேளுங்கள்."
         }
     },
@@ -411,6 +415,7 @@ const resources = {
             "voice_stock_response": "{{name}} चा स्टॉक {{stock}} आहे",
             "voice_price_response": "{{name}} ची किंमत ₹{{price}} आहे",
             "voice_sales_response": "आजची एकूण विक्री ₹{{amount}} आहे",
+            "voice_sale_response": "{{name}} साठी विक्री नोंदवली गेली. उर्वरित स्टॉक: {{remaining}}",
             "chat_welcome_message": "नमस्कार! मी तुम्हाला तुमच्या दुकानाच्या डेटाचे विश्लेषण करण्यास मदत करू शकतो. मला 'आपल्याकडे किती तांदूळ आहे?' किंवा 'आजची एकूण विक्री किती आहे?' यासारखे प्रश्न विचारा."
         }
     },
@@ -473,6 +478,7 @@ const resources = {
             "voice_stock_response": "{{name}} નો સ્ટોક {{stock}} છે",
             "voice_price_response": "{{name}} ની કિંમત ₹{{price}} છે",
             "voice_sales_response": "આજનું કુલ વેચાણ ₹{{amount}} છે",
+            "voice_sale_response": "{{name}} માટે વેચાણ નોંધાયું. બાકી સ્ટોક: {{remaining}}",
             "chat_welcome_message": "નમસ્તે! હું તમને તમારા દુકાન ડેટાનું વિશ્લેષણ કરવામાં મદદ કરી શકું છું. મને 'આપણી પાસે કેટલા ચોખા છે?' અથવા 'આજનું કુલ વેચાણ શું છે?' જેવા પ્રશ્નો પૂછો."
         }
     },
@@ -535,6 +541,7 @@ const resources = {
             "voice_stock_response": "{{name}} ಸ್ಟಾಕ್ {{stock}} ಇದೆ",
             "voice_price_response": "{{name}} ಬೆಲೆ ₹{{price}}",
             "voice_sales_response": "ಇಂದಿನ ಒಟ್ಟು ಮಾರಾಟ ₹{{amount}}",
+            "voice_sale_response": "{{name}} ಮಾರಾಟ ದಾಖಲಿಸಲಾಗಿದೆ. ಉಳಿದ ಸ್ಟಾಕ್: {{remaining}}",
             "chat_welcome_message": "ನಮಸ್ಕಾರ! ನಿಮ್ಮ ಅಂಗಡಿಯ ಡೇಟಾವನ್ನು ವಿಶ್ಲೇಷಿಸಲು ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡಬಹುದು. 'ನಮ್ಮಲ್ಲಿ ಎಷ್ಟು ಅಕ್ಕಿ ಇದೆ?' ಅಥವಾ 'ಇಂದಿನ ಒಟ್ಟು ಮಾರಾಟ ಎಷ್ಟು?' ಅಂತಹ ಪ್ರಶ್ನೆಗಳನ್ನು ನನ್ನನ್ನು ಕೇಳಿ."
         }
     },
@@ -597,6 +604,7 @@ const resources = {
             "voice_stock_response": "{{name}} സ്റ്റോക്ക് {{stock}} ഉണ്ട്",
             "voice_price_response": "{{name}} വില ₹{{price}} ആണ്",
             "voice_sales_response": "ഇന്നത്തെ മൊത്തം വിൽപ്പന ₹{{amount}}",
+            "voice_sale_response": "{{name}} വിൽപ്പന രേഖപ്പെടുത്തി. ബാക്കി സ്റ്റോക്ക്: {{remaining}}",
             "chat_welcome_message": "ഹലോ! നിങ്ങളുടെ ഷോപ്പ് ഡാറ്റ വിശകലനം ചെയ്യാൻ എനിക്ക് നിങ്ങളെ സഹായിക്കാനാകും. 'നമുക്ക് എത്ര അരിയുണ്ട്?' അല്ലെങ്കിൽ 'ഇന്നത്തെ മൊത്തം വിൽപ്പന എത്രയാണ്?' തുടങ്ങിയ ചോദ്യങ്ങൾ എന്നോട് ചോദിക്കൂ."
         }
     },
@@ -659,6 +667,7 @@ const resources = {
             "voice_stock_response": "{{name}} ਦਾ ਸਟਾਕ {{stock}} ਹੈ",
             "voice_price_response": "{{name}} ਦੀ ਕੀਮਤ ₹{{price}} ਹੈ",
             "voice_sales_response": "ਅੱਜ ਦੀ ਕੁੱਲ ਵਿਕਰੀ ₹{{amount}} ਹੈ",
+            "voice_sale_response": "{{name}} ਲਈ ਵਿਕਰੀ ਦਰਜ ਕੀਤੀ ਗਈ। ਬਾਕੀ ਸਟਾਕ: {{remaining}}",
             "chat_welcome_message": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡੀ ਦੁਕਾਨ ਦੇ ਡਾਟੇ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰਨ ਵਿੱਚ ਤੁਹਾਡੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ। ਮੇਰੇ ਤੋਂ 'ਸਾਡੇ ਕੋਲ ਕਿੰਨੇ ਚੌਲ ਹਨ?' ਜਾਂ 'ਅੱਜ ਦੀ ਕੁੱਲ ਵਿਕਰੀ ਕੀ ਹੈ?' ਵਰਗੇ ਸਵਾਲ ਪੁੱਛੋ।"
         }
     }

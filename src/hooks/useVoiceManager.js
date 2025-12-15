@@ -651,11 +651,16 @@ User Spoke: ${text}`;
 
                 const price = parseFloat(product.price);
                 const finalPrice = isNaN(price) ? 0 : price;
-                const nameStr = typeof product.name === 'object' ? (product.name.en || Object.values(product.name)[0]) : product.name;
+
+                // Use English name for DB/Sales Record to keep data consistent
+                const dbNameStr = typeof product.name === 'object' ? (product.name.en || Object.values(product.name)[0]) : product.name;
+
+                // Use Localized name for Voice Response
+                const localNameStr = typeof product.name === 'object' ? (product.name[lang] || product.name.en || Object.values(product.name)[0]) : product.name;
 
                 LocalStorageService.addSale({
                     product_id: product.id,
-                    product_name: nameStr, // Ensure name is preserved as string
+                    product_name: dbNameStr,
                     quantity: qty,
                     total_amount: qty * finalPrice
                 });
@@ -663,8 +668,8 @@ User Spoke: ${text}`;
                 const left = Math.max(0, product.stock - qty);
                 LocalStorageService.updateProduct(product.id, { stock: left });
 
-                const saleMsg = t('voice_sale_response', { name: nameStr, remaining: left, lng: lang })
-                    || `Sale recorded for ${nameStr}. Remaining stock: ${left}`;
+                const saleMsg = t('voice_sale_response', { name: localNameStr, remaining: left, lng: lang })
+                    || `Sale recorded for ${localNameStr}. Remaining stock: ${left}`;
                 return { speech: saleMsg, success: true };
 
             } else if (action === 'GET_INFO') {
