@@ -31,15 +31,6 @@ const Dashboard = () => {
             trendUp: true
         },
         {
-            label: t('todays_sales'),
-            value: `₹${totalSalesToday.toFixed(0)}`,
-            icon: TrendingUp,
-            color: "text-emerald-600 dark:text-emerald-400",
-            bg: "bg-emerald-500/10",
-            trend: "+8%",
-            trendUp: true
-        },
-        {
             label: t('low_stock_items'),
             value: lowStockItems.length,
             icon: AlertTriangle,
@@ -47,6 +38,15 @@ const Dashboard = () => {
             bg: "bg-orange-500/10",
             trend: "-2",
             trendUp: false
+        },
+        {
+            label: t('todays_sales'),
+            value: `₹${totalSalesToday.toFixed(0)}`,
+            icon: TrendingUp,
+            color: "text-emerald-600 dark:text-emerald-400",
+            bg: "bg-emerald-500/10",
+            trend: "+8%",
+            trendUp: true
         }
     ];
 
@@ -62,17 +62,15 @@ const Dashboard = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="flex overflow-x-auto gap-4 pb-2 snap-x snap-mandatory md:grid md:grid-cols-3 md:pb-0 hide-scrollbar">
+            <div className="grid grid-cols-3 gap-2">
                 {stats.map((stat, index) => (
-                    <div key={index} className="min-w-[280px] md:min-w-0 flex-1 snap-center bg-card p-6 rounded-2xl shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className={cn("p-3 rounded-xl", stat.bg, stat.color)}>
-                                <stat.icon size={24} />
-                            </div>
+                    <div key={index} className="bg-card p-4 rounded-xl shadow-sm border border-border hover:shadow-md transition-shadow duration-200 flex flex-col items-start justify-between min-h-[100px]">
+                        <div className={cn("p-2 rounded-lg mb-2", stat.bg, stat.color)}>
+                            <stat.icon size={20} />
                         </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                            <h3 className="text-3xl font-bold text-foreground mt-1">{stat.value}</h3>
+                        <div className="w-full">
+                            <h3 className="text-xl font-bold text-foreground leading-tight truncate">{stat.value}</h3>
+                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide truncate">{stat.label}</p>
                         </div>
                     </div>
                 ))}
