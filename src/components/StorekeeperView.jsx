@@ -114,6 +114,8 @@ const StorekeeperView = () => {
     const [cropperOpen, setCropperOpen] = useState(false);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
+
+
     const onCropComplete = (croppedArea, croppedAreaPixels) => {
         setCroppedAreaPixels(croppedAreaPixels);
     };
@@ -332,6 +334,14 @@ const StorekeeperView = () => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            // Validation Checks
+            if (!formData.name.trim()) { alert(t('name_required') || "Product Name is required!"); setSubmitting(false); return; }
+            if (!formData.category) { alert(t('category_required') || "Category is required!"); setSubmitting(false); return; }
+            if (formData.price === '' || formData.price === null) { alert(t('price_required') || "Price is required!"); setSubmitting(false); return; }
+            if (formData.stock === '' || formData.stock === null) { alert(t('stock_required') || "Stock is required!"); setSubmitting(false); return; }
+            if (formData.max_stock === '' || formData.max_stock === null) { alert(t('max_stock_required') || "Max Stock is required!"); setSubmitting(false); return; }
+            if (!formData.shelf_position) { alert(t('shelf_pos_required') || "Shelf Position is required!"); setSubmitting(false); return; }
+
             if (parseInt(formData.stock) > parseInt(formData.max_stock)) {
                 alert(t('stock_exceeds_max') || "Stock cannot exceed Max Stock!");
                 setSubmitting(false);
@@ -962,6 +972,7 @@ const StorekeeperView = () => {
                         </div>
                     </div>
                 )}
+
 
 
             </div>

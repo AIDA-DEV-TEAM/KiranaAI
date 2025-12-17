@@ -15,7 +15,7 @@ if not api_key:
 else:
     genai.configure(api_key=api_key)
 
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
 @router.post("/ocr")
 async def process_bill(file: UploadFile = File(...)):
@@ -24,13 +24,18 @@ async def process_bill(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(contents))
         
         prompt = """
-        Analyze this bill of lading image. Extract the list of items, their quantities, and prices.
-        Return the data in a pure JSON format like this:
-        [
-            {"name": "Item Name", "quantity": 10, "price": 100},
-            ...
-        ]
-        Do not include any markdown formatting or explanation. Just the JSON array.
+        Analyze this bill of lading / invoice image. Extract the list of items.
+        
+        Return a Strict JSON array of objects with these fields:
+        - "name": The product description or name (string).
+        - "quantity": The quantity purchased (number). If unclear, default to 1.
+        - "unit_price": The price per unit (number).
+        - "total_price": The total line item cost (number).
+
+        Handle handwritten text and poor lighting.
+        If a field is missing, use reasonable defaults or null.
+        
+        Do not include any markdown formatting (like ```json). Return ONLY the JSON array.
         """
         
         response = model.generate_content([prompt, image])
