@@ -84,7 +84,11 @@ const StockScanningView = () => {
 
     const handleFileChange = (event, type) => {
         const file = event.target.files[0];
-        processImageFile(file, type);
+        if (file) {
+            processImageFile(file, type);
+        }
+        // Reset value to allow re-selecting the same file
+        event.target.value = '';
     };
 
     const handleCameraCapture = async (type) => {
