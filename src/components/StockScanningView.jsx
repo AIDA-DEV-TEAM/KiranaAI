@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, Upload, CheckCircle, AlertCircle, Save, RefreshCw, Plus, Trash2 } from 'lucide-react';
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { uploadVisionImage } from '../services/api';
 import { useAppData } from '../context/AppDataContext';
 import { LocalStorageService } from '../services/LocalStorageService';
@@ -38,8 +39,7 @@ const StockScanningView = () => {
         });
     };
 
-    const handleFileUpload = async (event, type) => {
-        const file = event.target.files[0];
+    const processImageFile = async (file, type) => {
         if (!file) return;
 
         setLoading(true);
@@ -79,6 +79,35 @@ const StockScanningView = () => {
             setError("Failed to process image. Please try again.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFileChange = (event, type) => {
+        const file = event.target.files[0];
+        processImageFile(file, type);
+    };
+
+    const handleCameraCapture = async (type) => {
+        try {
+            const image = await CapacitorCamera.getPhoto({
+                quality: 90,
+                allowEditing: false,
+                resultType: CameraResultType.Uri,
+                source: CameraSource.Camera
+            });
+
+            // Convert webPath to Blob
+            const response = await fetch(image.webPath);
+            const blob = await response.blob();
+            const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+            processImageFile(file, type);
+
+        } catch (error) {
+            console.error("Camera capture failed:", error);
+            if (error && error.message !== 'User cancelled photos app') {
+                setError("Camera error: " + (error.message || "Unknown error"));
+            }
         }
     };
 
@@ -134,9 +163,7 @@ const StockScanningView = () => {
     };
 
     // Refs
-    const ocrCameraRef = React.useRef(null);
     const ocrGalleryRef = React.useRef(null);
-    const shelfCameraRef = React.useRef(null);
     const shelfGalleryRef = React.useRef(null);
     const triggerFileInput = (ref) => ref.current?.click();
 
@@ -156,20 +183,12 @@ const StockScanningView = () => {
                 <div className="flex gap-4">
                     {/* Camera Option */}
                     <button
-                        onClick={() => triggerFileInput(ocrCameraRef)}
+                        onClick={() => handleCameraCapture('ocr')}
                         className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-primary/30 bg-primary/5 rounded-xl hover:bg-primary/10 transition-colors"
                     >
                         <Camera className="w-8 h-8 text-primary mb-2" />
                         <p className="text-sm font-medium text-primary">Take Photo</p>
                     </button>
-                    <input
-                        ref={ocrCameraRef}
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handleFileUpload(e, 'ocr')}
-                    />
 
                     {/* Gallery Option */}
                     <button
@@ -184,7 +203,7 @@ const StockScanningView = () => {
                         type="file"
                         className="hidden"
                         accept="image/*"
-                        onChange={(e) => handleFileUpload(e, 'ocr')}
+                        onChange={(e) => handleFileChange(e, 'ocr')}
                     />
                 </div>
 
@@ -282,20 +301,12 @@ const StockScanningView = () => {
                 <div className="flex gap-4">
                     {/* Camera Option */}
                     <button
-                        onClick={() => triggerFileInput(shelfCameraRef)}
+                        onClick={() => handleCameraCapture('shelf')}
                         className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-border bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
                     >
                         <Camera className="w-8 h-8 text-secondary-foreground mb-2" />
                         <p className="text-sm font-medium text-foreground">Take Photo</p>
                     </button>
-                    <input
-                        ref={shelfCameraRef}
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handleFileUpload(e, 'shelf')}
-                    />
 
                     {/* Gallery Option */}
                     <button
@@ -310,7 +321,7 @@ const StockScanningView = () => {
                         type="file"
                         className="hidden"
                         accept="image/*"
-                        onChange={(e) => handleFileUpload(e, 'shelf')}
+                        onChange={(e) => handleFileChange(e, 'shelf')}
                     />
                 </div>
 
