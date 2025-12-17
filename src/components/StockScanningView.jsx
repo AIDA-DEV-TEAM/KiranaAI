@@ -82,13 +82,28 @@ const StockScanningView = () => {
         }
     };
 
-    const handleFileChange = (event, type) => {
-        const file = event.target.files[0];
-        if (file) {
+    const handleNativeGallery = async (type) => {
+        try {
+            const image = await CapacitorCamera.getPhoto({
+                quality: 90,
+                allowEditing: false,
+                resultType: CameraResultType.Uri,
+                source: CameraSource.Photos // Force gallery source
+            });
+
+            // Convert webPath to Blob
+            const response = await fetch(image.webPath);
+            const blob = await response.blob();
+            const file = new File([blob], `gallery_upload_${Date.now()}.jpg`, { type: 'image/jpeg' });
+
             processImageFile(file, type);
+
+        } catch (error) {
+            console.error("Gallery selection failed:", error);
+            if (error && error.message !== 'User cancelled photos app') {
+                setError("Gallery error: " + (error.message || "Unknown error"));
+            }
         }
-        // Reset value to allow re-selecting the same file
-        event.target.value = '';
     };
 
     const handleCameraCapture = async (type) => {
@@ -97,7 +112,7 @@ const StockScanningView = () => {
                 quality: 90,
                 allowEditing: false,
                 resultType: CameraResultType.Uri,
-                source: CameraSource.Camera
+                source: CameraSource.Camera // Force camera source
             });
 
             // Convert webPath to Blob
@@ -166,10 +181,7 @@ const StockScanningView = () => {
         setBillData(newData);
     };
 
-    // Refs
-    const ocrGalleryRef = React.useRef(null);
-    const shelfGalleryRef = React.useRef(null);
-    const triggerFileInput = (ref) => ref.current?.click();
+    // No refs needed for native camera/gallery
 
     return (
         <div className="p-4 space-y-8 pb-32 overflow-y-auto h-full">
@@ -196,19 +208,12 @@ const StockScanningView = () => {
 
                     {/* Gallery Option */}
                     <button
-                        onClick={() => triggerFileInput(ocrGalleryRef)}
+                        onClick={() => handleNativeGallery('ocr')}
                         className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-border bg-card rounded-xl hover:bg-muted/50 transition-colors"
                     >
                         <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                         <p className="text-sm font-medium text-muted-foreground">Upload File</p>
                     </button>
-                    <input
-                        ref={ocrGalleryRef}
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => handleFileChange(e, 'ocr')}
-                    />
                 </div>
 
                 {/* Review UI */}
@@ -314,19 +319,12 @@ const StockScanningView = () => {
 
                     {/* Gallery Option */}
                     <button
-                        onClick={() => triggerFileInput(shelfGalleryRef)}
+                        onClick={() => handleNativeGallery('shelf')}
                         className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-border bg-card rounded-xl hover:bg-muted/50 transition-colors"
                     >
                         <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                         <p className="text-sm font-medium text-muted-foreground">Upload File</p>
                     </button>
-                    <input
-                        ref={shelfGalleryRef}
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => handleFileChange(e, 'shelf')}
-                    />
                 </div>
 
                 {shelfResult && (
