@@ -62,13 +62,15 @@ async def analyze_shelf(file: UploadFile = File(...)):
         
         Extract the visible products into a structured JSON array.
         For each product, provide:
-        - "name": Specific product name/brand (e.g., "Coca Cola 2L", "Dove Soap").
+        - "name": Specific product name/brand.
         - "count": Count of this item visible.
-        - "category": Your best guess of the broad category based on visual cues (e.g., "Beverage", "Snacks", "Cleaning", "Personal Care", "Grains").
+        - "category": Broad category (e.g., "Beverage", "Snacks").
+        - "low_stock": Boolean. Set to true if there is significant empty shelf space for this product, suggesting it needs restocking.
         
         Analyze the shelf arrangement:
-        - "misplaced": Boolean. Set to true if this item looks clearly out of place compared to its neighbors (e.g., a Shampoo bottle in the Chips section). Default false.
-
+        - "misplaced": Boolean. Set to true if this item looks clearly out of place.
+        - "suggested_shelf": If misplaced, suggest the ID of a shelf in the image (e.g., "A1", "B2") where it SHOULD be. If no IDs are visible, suggest a logical location.
+        
         Strict JSON array output. No markdown.
         """
         
