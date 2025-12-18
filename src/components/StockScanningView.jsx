@@ -110,13 +110,7 @@ const StockScanningView = () => {
                     return;
                 }
 
-                // Shelf Audit Logic
-                const targetShelf = document.getElementById('target-shelf-select')?.value;
-                if (!targetShelf) {
-                    setError("Target Shelf not selected.");
-                    return;
-                }
-
+                // Global Shelf Audit Logic (No Target Required)
                 const auditedItems = parsedData.map(item => {
                     // Match with inventory
                     const bestMatch = inventory.find(p => {
@@ -126,21 +120,24 @@ const StockScanningView = () => {
                     });
 
                     if (bestMatch) {
-                        const isCorrectShelf = bestMatch.shelf_position === targetShelf;
                         return {
                             ...item,
                             matchedId: bestMatch.id,
-                            status: isCorrectShelf ? 'verified' : 'moved',
-                            currentShelf: targetShelf,
-                            oldShelf: bestMatch.shelf_position,
-                            count: item.count || 1
+                            status: 'match',
+                            systemStock: bestMatch.stock || 0,
+                            visualCount: item.count || 1,
+                            name: typeof bestMatch.name === 'object' ? (bestMatch.name.en || Object.values(bestMatch.name)[0]) : bestMatch.name
                         };
                     } else {
                         return {
                             ...item,
                             status: 'new',
-                            currentShelf: targetShelf,
-                            count: item.count || 1
+                            visualCount: item.count || 1,
+                            // Defaults for new item
+                            category: 'Uncategorized',
+                            price: 0,
+                            shelf_position: 'Storage',
+                            max_stock: 50
                         };
                     }
                 });
@@ -446,56 +443,26 @@ const StockScanningView = () => {
             {/* Shelf Analysis Section */}
             <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
                 <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                    <CheckCircle size={20} className="text-blue-600 dark:text-blue-400" /> Shelf Audit
+                    <CheckCircle size={20} className="text-blue-600 dark:text-blue-400" /> Global Stock Audit
                 </h2>
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4 text-xs text-blue-800 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
-                    <strong>Pro Tip:</strong> For 100% accuracy, capture <strong>one specific shelf</strong> at a time.
-                    Scanning multiple shelves at once may cause products to be assigned to the wrong location.
-                </div>
-
-                {/* Target Shelf Selection */}
-                <div className="mb-4">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Target Shelf (Ground Truth)</label>
-                    <select
-                        className="w-full bg-background border border-border rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/20"
-                        onChange={(e) => {
-                            // Clear previous results when shelf changes to avoid confusion
-                            setShelfResult(null);
-                            // Store target shelf in a temp variable or ref if needed, 
-                            // but for now we can read it directly from the select when processing matches if we used a ref, 
-                            // or better, use state. Let's add state for it.
-                        }}
-                        id="target-shelf-select"
-                        defaultValue=""
-                    >
-                        <option value="" disabled>Select Shelf to Audit</option>
-                        {SHELF_POSITIONS.map(pos => (
-                            <option key={pos} value={pos}>{pos}</option>
-                        ))}
-                    </select>
+                    <strong>Capture Everything:</strong> Take a photo of an entire rack or multiple shelves.
+                    The app will count visible items and let you sync stock levels or add new products instantly.
                 </div>
 
                 <div className="flex gap-4 mb-6">
                     {/* Camera Option */}
                     <button
-                        onClick={() => {
-                            const shelf = document.getElementById('target-shelf-select').value;
-                            if (!shelf) { alert("Please select a target shelf first."); return; }
-                            handleCameraCapture('shelf');
-                        }}
+                        onClick={() => handleCameraCapture('shelf')}
                         className="flex-1 flex flex-col items-center justify-center h-28 border-2 border-dashed border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl hover:bg-blue-100/50 transition-colors"
                     >
                         <Camera className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2" />
-                        <p className="text-xs font-bold text-blue-700 dark:text-blue-300">Audit {document.getElementById('target-shelf-select')?.value ? `Shelf ${document.getElementById('target-shelf-select').value}` : 'Shelf'}</p>
+                        <p className="text-xs font-bold text-blue-700 dark:text-blue-300">Scan Racks</p>
                     </button>
 
                     {/* Gallery Option */}
                     <button
-                        onClick={() => {
-                            const shelf = document.getElementById('target-shelf-select').value;
-                            if (!shelf) { alert("Please select a target shelf first."); return; }
-                            handleNativeGallery('shelf');
-                        }}
+                        onClick={() => handleNativeGallery('shelf')}
                         className="flex-1 flex flex-col items-center justify-center h-28 border-2 border-dashed border-border bg-card rounded-xl hover:bg-muted/50 transition-colors"
                     >
                         <Upload className="w-6 h-6 text-muted-foreground mb-2" />
@@ -506,68 +473,147 @@ const StockScanningView = () => {
                 {shelfResult && (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-foreground">Audit Results</h3>
-                            <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">{shelfResult.length} items detected</span>
+                            <h3 className="font-bold text-foreground">Detected Inventory</h3>
+                            <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">{shelfResult.length} items</span>
                         </div>
 
                         <div className="space-y-3">
                             {shelfResult.map((item, idx) => (
-                                <div key={idx} className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${item.status === 'verified' ? 'bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-800' :
-                                    item.status === 'moved' ? 'bg-yellow-50/50 border-yellow-200 dark:bg-yellow-900/10 dark:border-yellow-800' :
+                                <div key={idx} className={`p-3 rounded-xl border ${item.status === 'match' ? 'bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-800' :
                                         'bg-blue-50/50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800'
                                     }`}>
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-sm text-foreground">{item.name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {item.status === 'verified' && <span className="text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle size={10} /> Verified in {item.currentShelf}</span>}
-                                            {item.status === 'moved' && <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-1"><AlertCircle size={10} /> Moved from {item.oldShelf || 'Storage'}</span>}
-                                            {item.status === 'new' && <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1"><Plus size={10} /> New Item</span>}
-                                        </p>
+                                    {/* Header Row */}
+                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                        <div className="flex-1">
+                                            {item.status === 'match' ? (
+                                                <>
+                                                    <p className="font-semibold text-sm text-foreground">{item.name}</p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-xs bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded text-muted-foreground">System: {item.systemStock}</span>
+                                                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Seen: {item.visualCount}</span>
+                                                        {item.systemStock !== item.visualCount && (
+                                                            <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse">Mismatch</span>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase">New Item</span>
+                                                    </div>
+                                                    <input
+                                                        value={item.name}
+                                                        onChange={(e) => {
+                                                            const newRes = [...shelfResult];
+                                                            newRes[idx].name = e.target.value;
+                                                            setShelfResult(newRes);
+                                                        }}
+                                                        className="w-full bg-transparent border-b border-dashed border-blue-300 text-sm font-semibold outline-none focus:border-blue-600"
+                                                        placeholder="Product Name"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <span className="block text-lg font-bold">{item.count}</span>
-                                        <span className="text-[10px] text-muted-foreground uppercase">Count</span>
-                                    </div>
+
+                                    {/* Action Row */}
+                                    {item.status === 'new' && (
+                                        <div className="grid grid-cols-2 gap-2 mt-3 p-2 bg-background/50 rounded-lg">
+                                            <div>
+                                                <label className="text-[9px] uppercase font-bold text-muted-foreground">Category</label>
+                                                <select
+                                                    value={item.category}
+                                                    onChange={(e) => {
+                                                        const newRes = [...shelfResult];
+                                                        newRes[idx].category = e.target.value;
+                                                        setShelfResult(newRes);
+                                                    }}
+                                                    className="w-full text-xs bg-transparent border-b border-border outline-none"
+                                                >
+                                                    {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] uppercase font-bold text-muted-foreground">Shelf</label>
+                                                <select
+                                                    value={item.shelf_position}
+                                                    onChange={(e) => {
+                                                        const newRes = [...shelfResult];
+                                                        newRes[idx].shelf_position = e.target.value;
+                                                        setShelfResult(newRes);
+                                                    }}
+                                                    className="w-full text-xs bg-transparent border-b border-border outline-none"
+                                                >
+                                                    {SHELF_POSITIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] uppercase font-bold text-muted-foreground">Price</label>
+                                                <input
+                                                    type="number"
+                                                    value={item.price}
+                                                    onChange={(e) => {
+                                                        const newRes = [...shelfResult];
+                                                        newRes[idx].price = e.target.value;
+                                                        setShelfResult(newRes);
+                                                    }}
+                                                    className="w-full text-xs bg-transparent border-b border-border outline-none" placeholder="0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] uppercase font-bold text-muted-foreground">Stock (Seen)</label>
+                                                <input
+                                                    type="number"
+                                                    value={item.visualCount}
+                                                    onChange={(e) => {
+                                                        const newRes = [...shelfResult];
+                                                        newRes[idx].visualCount = e.target.value;
+                                                        setShelfResult(newRes);
+                                                    }}
+                                                    className="w-full text-xs bg-transparent border-b border-border outline-none font-bold text-blue-600"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
 
                         <button
                             onClick={() => {
-                                // Update Logic
-                                const targetShelf = document.getElementById('target-shelf-select').value;
-                                if (!targetShelf) return;
-
+                                // Bulk Sync Logic
                                 let updatesCount = 0;
+                                let newCount = 0;
+
                                 shelfResult.forEach(item => {
-                                    if (item.status === 'moved' && item.matchedId) {
-                                        // Update existing product location
+                                    if (item.status === 'match') {
+                                        // Update Stock for existing
                                         const product = inventory.find(p => p.id === item.matchedId);
                                         if (product) {
-                                            LocalStorageService.updateProduct(product.id, { shelf_position: targetShelf });
+                                            LocalStorageService.updateProduct(product.id, { stock: parseInt(item.visualCount) || 0 });
                                             updatesCount++;
                                         }
                                     } else if (item.status === 'new') {
-                                        // Create new product listing
+                                        // Create new product
                                         LocalStorageService.addProduct({
                                             name: item.name,
-                                            price: 0,
-                                            stock: item.count,
-                                            category: 'Uncategorized',
-                                            max_stock: 50,
-                                            shelf_position: targetShelf
+                                            price: parseFloat(item.price) || 0,
+                                            stock: parseInt(item.visualCount) || 1,
+                                            category: item.category || 'Uncategorized',
+                                            max_stock: parseInt(item.max_stock) || 50,
+                                            shelf_position: item.shelf_position || 'Storage'
                                         });
-                                        updatesCount++;
+                                        newCount++;
                                     }
                                 });
 
                                 refreshInventory(true);
-                                alert(`Audit Complete! Updated ${updatesCount} items to Shelf ${targetShelf}.`);
+                                alert(`Sync Complete!\nUpdated Stock: ${updatesCount} items\nCreated New: ${newCount} items`);
                                 setShelfResult(null);
                             }}
                             className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
                         >
-                            Update All Locations
+                            Sync All Inventory
                         </button>
                     </div>
                 )}
