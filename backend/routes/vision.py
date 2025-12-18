@@ -1,5 +1,6 @@
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from PIL import Image
 import io
@@ -10,15 +11,16 @@ load_dotenv()
 router = APIRouter(prefix="/vision", tags=["vision"])
 
 api_key = os.getenv("GEMINI_API_KEY")
+client = None
 if not api_key:
     print("Warning: GEMINI_API_KEY not found in environment variables")
 else:
-    genai.configure(api_key=api_key)
-
-model = genai.GenerativeModel('gemini-2.5-flash-lite')
+    client = genai.Client(api_key=api_key)
 
 @router.post("/ocr")
 async def process_bill(file: UploadFile = File(...)):
+    if not client:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
@@ -38,13 +40,18 @@ async def process_bill(file: UploadFile = File(...)):
         Do not include any markdown formatting (like ```json). Return ONLY the JSON array.
         """
         
-        response = model.generate_content([prompt, image])
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-lite',
+            contents=[image, prompt]
+        )
         return {"data": response.text.strip()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR failed: {str(e)}")
 
 @router.post("/shelf")
 async def analyze_shelf(file: UploadFile = File(...)):
+    if not client:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
@@ -63,7 +70,10 @@ async def analyze_shelf(file: UploadFile = File(...)):
         Return the data in a STRICT JSON array format. Do not include any markdown formatting (like ```json ... ```).
         """
         
-        response = model.generate_content([prompt, image])
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-lite',
+            contents=[image, prompt]
+        )
         return {"data": response.text.strip()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Shelf analysis failed: {str(e)}")

@@ -2,6 +2,9 @@ import os
 import json
 import re
 import google.generativeai as genai
+# Note: google-genai migration
+from google import genai
+from google.genai import types
 
 from dotenv import load_dotenv
 import logging
@@ -14,8 +17,9 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
+client = None
 if api_key:
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
 SYSTEM_PROMPT = """
 You are 'KiranaAI', an elite, highly intelligent, and warm AI assistant for Indian shopkeepers.
@@ -64,9 +68,6 @@ Your mission is to provide an impressive, seamless voice experience that feels t
 4. **No Tech**: Do not show JSON or parameters in the `response` text. output only natural language.
 """
 
-# Using gemini-2.5-flash-lite as requested
-model = genai.GenerativeModel('gemini-2.5-flash-lite', system_instruction=SYSTEM_PROMPT, generation_config={"response_mime_type": "application/json"})
-
 def parse_gemini_json(text: str) -> dict:
     """Helper to cleanly parse JSON from Gemini's output, handling markdown blocks."""
     try:
@@ -102,14 +103,12 @@ async def process_chat_message(message: str, history: list = [], language: str =
         logger.error("Gemini API key not configured")
         return {"response": "System Error: API Key missing.", "action": "NONE"}
 
-    # Convert history to Gemini format
+    # Convert history to Gemini format (Standard Content Item format)
     gemini_history = []
     for msg in history:
         role = "user" if msg.get("role") == "user" else "model"
-        gemini_history.append({"role": role, "parts": [msg.get("content")]})
+        gemini_history.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content"))]))
 
-    chat_session = model.start_chat(history=gemini_history)
-    
     logger.info(f"Received Inventory Context with {len(inventory)} items.")
 
     # Format Inventory Context
@@ -130,7 +129,21 @@ Language: {language}
 """
 
     try:
-        response = chat_session.send_message(prompt)
+        # Use simple generate_content with history + prompt?
+        # The new SDK handles chat differently. We can create a chat session or just append history to prompt.
+        # But `client.chats.create` is the way.
+        
+        chat = client.chats.create(
+            model='gemini-2.5-flash-lite',
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                response_mime_type="application/json"
+            ),
+            history=gemini_history
+        )
+
+        response = chat.send_message(prompt)
+
         text_response = ""
         try:
             text_response = response.text.strip()

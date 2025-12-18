@@ -2,7 +2,8 @@ import os
 import json
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,8 +12,9 @@ router = APIRouter(prefix="/translate", tags=["translate"])
 
 # Configure Gemini
 api_key = os.getenv("GEMINI_API_KEY")
+client = None
 if api_key:
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
 class TranslateRequest(BaseModel):
     text: str
@@ -23,11 +25,11 @@ class TranslateResponse(BaseModel):
 
 @router.post("/", response_model=TranslateResponse)
 async def translate_text(request: TranslateRequest):
-    if not api_key:
+    if not client:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
 
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash', generation_config={"response_mime_type": "application/json"})
+        # model = genai.GenerativeModel('gemini-2.5-flash', generation_config={"response_mime_type": "application/json"})
         
         prompt = f"""
         Translate the following product name into these languages: {', '.join(request.target_languages)}.
@@ -38,7 +40,11 @@ async def translate_text(request: TranslateRequest):
         ensure the translation is accurate for a grocery store context.
         """
 
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json")
+        )
         text_response = response.text.strip()
         
         # Parse JSON
