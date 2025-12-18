@@ -5,6 +5,8 @@ import { uploadVisionImage } from '../services/api';
 import { useAppData } from '../context/AppDataContext';
 import { LocalStorageService } from '../services/LocalStorageService';
 
+const SHELF_POSITIONS = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'D1', 'D2', 'Front', 'Counter', 'Storage'];
+
 const StockScanningView = () => {
     // Context
     const { inventory, refreshInventory } = useAppData();
@@ -32,7 +34,8 @@ const StockScanningView = () => {
             return {
                 ...item,
                 quantity: item.quantity || 1,
-                unit_price: item.unit_price || 0,
+                unit_price: item.unit_price || (bestMatch ? bestMatch.price : 0),
+                shelf_position: bestMatch ? (bestMatch.shelf_position || 'Storage') : 'Storage',
                 matchedProductId: bestMatch ? bestMatch.id : 'new',
                 isNew: !bestMatch
             };
@@ -141,11 +144,11 @@ const StockScanningView = () => {
                     // Create New Product
                     const newProduct = {
                         name: item.name,
-                        price: item.unit_price || 0,
-                        stock: item.quantity || 1,
+                        price: parseFloat(item.unit_price) || 0,
+                        stock: parseInt(item.quantity) || 1,
                         category: 'Uncategorized', // Default
                         max_stock: 50,
-                        shelf_position: 'Storage'
+                        shelf_position: item.shelf_position || 'Storage'
                     };
                     LocalStorageService.addProduct(newProduct);
                 } else {
@@ -153,7 +156,12 @@ const StockScanningView = () => {
                     const product = inventory.find(p => p.id === item.matchedProductId);
                     if (product) {
                         const newStock = (parseInt(product.stock) || 0) + (parseInt(item.quantity) || 0);
-                        LocalStorageService.updateProduct(product.id, { stock: newStock });
+                        const updates = {
+                            stock: newStock,
+                            price: parseFloat(item.unit_price) || product.price,
+                            shelf_position: item.shelf_position || product.shelf_position
+                        };
+                        LocalStorageService.updateProduct(product.id, updates);
                     }
                 }
             }
@@ -230,6 +238,8 @@ const StockScanningView = () => {
                                     <tr>
                                         <th className="p-3">Item (from Bill)</th>
                                         <th className="p-3">Matched Product</th>
+                                        <th className="p-3 w-20">Price</th>
+                                        <th className="p-3 w-20">Shelf</th>
                                         <th className="p-3 w-20">Qty</th>
                                         <th className="p-3 w-10"></th>
                                     </tr>
@@ -259,6 +269,26 @@ const StockScanningView = () => {
                                                             </option>
                                                         ))}
                                                     </optgroup>
+                                                </select>
+                                            </td>
+                                            <td className="p-3">
+                                                <input
+                                                    type="number"
+                                                    value={item.unit_price}
+                                                    onChange={(e) => updateBillItem(idx, 'unit_price', e.target.value)}
+                                                    className="w-full bg-background border border-border rounded p-1.5 text-center focus:ring-1 focus:ring-primary outline-none"
+                                                    placeholder="Price"
+                                                />
+                                            </td>
+                                            <td className="p-3">
+                                                <select
+                                                    value={item.shelf_position}
+                                                    onChange={(e) => updateBillItem(idx, 'shelf_position', e.target.value)}
+                                                    className="w-full bg-background border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none"
+                                                >
+                                                    {SHELF_POSITIONS.map(pos => (
+                                                        <option key={pos} value={pos}>{pos}</option>
+                                                    ))}
                                                 </select>
                                             </td>
                                             <td className="p-3">
