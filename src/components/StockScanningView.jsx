@@ -20,6 +20,28 @@ const StockScanningView = () => {
     const [isReviewing, setIsReviewing] = useState(false);
     const [commitLoading, setCommitLoading] = useState(false);
 
+    // Persistence: Load on Mount
+    useEffect(() => {
+        const storedBillData = localStorage.getItem('bill_review_data');
+        const storedIsReviewing = localStorage.getItem('bill_is_reviewing');
+
+        if (storedBillData) {
+            try {
+                setBillData(JSON.parse(storedBillData));
+            } catch (e) { console.error("Failed to parse stored bill data"); }
+        }
+
+        if (storedIsReviewing) {
+            setIsReviewing(storedIsReviewing === 'true');
+        }
+    }, []);
+
+    // Persistence: Save on Change
+    useEffect(() => {
+        localStorage.setItem('bill_review_data', JSON.stringify(billData));
+        localStorage.setItem('bill_is_reviewing', isReviewing.toString());
+    }, [billData, isReviewing]);
+
     // Matching Logic
     const matchProducts = (extractedItems) => {
         return extractedItems.map(item => {
@@ -70,11 +92,20 @@ const StockScanningView = () => {
             }
 
             if (type === 'ocr') {
-                const matchedMessages = matchProducts(Array.isArray(parsedData) ? parsedData : []);
+                const items = Array.isArray(parsedData) ? parsedData : [];
+                if (items.length === 0) {
+                    setError("Oops! We couldn't find any items in that image. Please try capturing or uploading a clear photo of the bill.");
+                    return;
+                }
+                const matchedMessages = matchProducts(items);
                 setBillData(matchedMessages);
                 setOcrResult(matchedMessages); // Keep raw reference if needed
                 setIsReviewing(true);
             } else {
+                if (!parsedData || (Array.isArray(parsedData) && parsedData.length === 0)) {
+                    setError("We couldn't spot any products on the shelf. Please ensure the shelves are well-lit and try again.");
+                    return;
+                }
                 setShelfResult(parsedData);
             }
         } catch (err) {
@@ -166,8 +197,13 @@ const StockScanningView = () => {
                 }
             }
             await refreshInventory(true);
+
+            // Clear Persistence
             setBillData([]);
             setIsReviewing(false);
+            localStorage.removeItem('bill_review_data');
+            localStorage.removeItem('bill_is_reviewing');
+
             alert("Inventory Updated Successfully!");
         } catch (e) {
             console.error("Commit failed", e);
@@ -323,7 +359,12 @@ const StockScanningView = () => {
                                 Confirm & Update Inventory
                             </button>
                             <button
-                                onClick={() => { setIsReviewing(false); setBillData([]); }}
+                                onClick={() => {
+                                    setIsReviewing(false);
+                                    setBillData([]);
+                                    localStorage.removeItem('bill_review_data');
+                                    localStorage.removeItem('bill_is_reviewing');
+                                }}
                                 className="px-4 py-3 bg-muted text-foreground font-medium rounded-xl hover:bg-muted/80"
                             >
                                 Cancel
