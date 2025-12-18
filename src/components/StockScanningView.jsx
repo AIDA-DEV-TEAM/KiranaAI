@@ -232,82 +232,85 @@ const StockScanningView = () => {
                             <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">{billData.length} items found</span>
                         </div>
 
-                        <div className="border border-border rounded-lg overflow-hidden bg-background">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-muted/50 text-muted-foreground font-medium">
-                                    <tr>
-                                        <th className="p-3">Item (from Bill)</th>
-                                        <th className="p-3">Matched Product</th>
-                                        <th className="p-3 w-20">Price</th>
-                                        <th className="p-3 w-20">Shelf</th>
-                                        <th className="p-3 w-20">Qty</th>
-                                        <th className="p-3 w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                    {billData.map((item, idx) => (
-                                        <tr key={idx} className="hover:bg-muted/20">
-                                            <td className="p-3 font-medium">
-                                                <input
-                                                    value={item.name}
-                                                    onChange={(e) => updateBillItem(idx, 'name', e.target.value)}
-                                                    className="w-full bg-transparent border-none outline-none focus:ring-1 focus:ring-primary rounded px-1"
-                                                />
-                                            </td>
-                                            <td className="p-3">
-                                                <select
-                                                    value={item.matchedProductId}
-                                                    onChange={(e) => updateBillItem(idx, 'matchedProductId', e.target.value)}
-                                                    className="w-full max-w-[180px] bg-background border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none"
-                                                >
-                                                    <option value="new">+ Create New</option>
-                                                    <option value="skip">Skip (Don't Add)</option>
-                                                    <optgroup label="Existing Inventory">
-                                                        {inventory.map(p => (
-                                                            <option key={p.id} value={p.id}>
-                                                                {typeof p.name === 'object' ? (p.name.en || Object.values(p.name)[0]) : p.name}
-                                                            </option>
-                                                        ))}
-                                                    </optgroup>
-                                                </select>
-                                            </td>
-                                            <td className="p-3">
-                                                <input
-                                                    type="number"
-                                                    value={item.unit_price}
-                                                    onChange={(e) => updateBillItem(idx, 'unit_price', e.target.value)}
-                                                    className="w-full bg-background border border-border rounded p-1.5 text-center focus:ring-1 focus:ring-primary outline-none"
-                                                    placeholder="Price"
-                                                />
-                                            </td>
-                                            <td className="p-3">
-                                                <select
-                                                    value={item.shelf_position}
-                                                    onChange={(e) => updateBillItem(idx, 'shelf_position', e.target.value)}
-                                                    className="w-full bg-background border border-border rounded p-1.5 focus:ring-1 focus:ring-primary outline-none"
-                                                >
-                                                    {SHELF_POSITIONS.map(pos => (
-                                                        <option key={pos} value={pos}>{pos}</option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                            <td className="p-3">
+                        <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
+                            {billData.map((item, idx) => (
+                                <div key={idx} className="bg-card border border-border rounded-xl p-3 shadow-sm flex flex-col gap-3 relative animate-in fade-in slide-in-from-bottom-2">
+                                    <button
+                                        onClick={() => removeBillItem(idx)}
+                                        className="absolute top-3 right-3 text-muted-foreground hover:text-red-500 transition-colors p-1"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+
+                                    {/* Top Row: Scanned Name */}
+                                    <div className="pr-8">
+                                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Bill Item</label>
+                                        <input
+                                            value={item.name}
+                                            onChange={(e) => updateBillItem(idx, 'name', e.target.value)}
+                                            className="w-full bg-transparent font-medium text-foreground border-none outline-none focus:ring-0 p-0 text-base"
+                                        />
+                                    </div>
+
+                                    {/* Middle Row: Match */}
+                                    <div>
+                                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold block mb-1">Matched Product</label>
+                                        <select
+                                            value={item.matchedProductId}
+                                            onChange={(e) => updateBillItem(idx, 'matchedProductId', e.target.value)}
+                                            className="w-full bg-muted/30 border border-border rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                        >
+                                            <option value="new" className="font-bold text-primary">+ Create New Product</option>
+                                            <option value="skip" className="text-muted-foreground">Skip (Don't Add)</option>
+                                            <optgroup label="Existing Inventory">
+                                                {inventory.map(p => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {typeof p.name === 'object' ? (p.name.en || Object.values(p.name)[0]) : p.name}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        </select>
+                                    </div>
+
+                                    {/* Bottom Grid: Price | Shelf | Qty */}
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] uppercase text-muted-foreground font-bold text-center">Price</label>
+                                            <input
+                                                type="number"
+                                                value={item.unit_price}
+                                                onChange={(e) => updateBillItem(idx, 'unit_price', e.target.value)}
+                                                className="w-full bg-background border border-border rounded-lg py-1.5 text-center text-sm font-medium focus:border-primary outline-none transition-all"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] uppercase text-muted-foreground font-bold text-center">Shelf</label>
+                                            <select
+                                                value={item.shelf_position}
+                                                onChange={(e) => updateBillItem(idx, 'shelf_position', e.target.value)}
+                                                className="w-full bg-background border border-border rounded-lg py-1.5 px-0 text-center text-sm font-medium focus:border-primary outline-none appearance-none"
+                                            >
+                                                {SHELF_POSITIONS.map(pos => (
+                                                    <option key={pos} value={pos}>{pos}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-[10px] uppercase text-muted-foreground font-bold text-center">Qty</label>
+                                            <div className="relative">
                                                 <input
                                                     type="number"
                                                     value={item.quantity}
                                                     onChange={(e) => updateBillItem(idx, 'quantity', e.target.value)}
-                                                    className="w-full bg-background border border-border rounded p-1.5 text-center focus:ring-1 focus:ring-primary outline-none"
+                                                    className="w-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg py-1.5 text-center text-sm font-bold text-green-700 dark:text-green-400 focus:border-green-500 outline-none"
+                                                    placeholder="0"
                                                 />
-                                            </td>
-                                            <td className="p-3 text-center">
-                                                <button onClick={() => removeBillItem(idx)} className="text-red-500 hover:bg-red-50 p-1 rounded">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         <div className="pt-2 flex gap-3">
