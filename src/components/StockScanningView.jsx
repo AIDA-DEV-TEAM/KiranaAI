@@ -521,10 +521,21 @@ const StockScanningView = () => {
                             </div>
 
                             {/* Stock Health */}
-                            <div className="p-4 bg-gray-50 dark:bg-muted/20 rounded-xl border border-gray-200 dark:border-border shadow-sm">
+                            <div className="p-4 bg-gray-50 dark:bg-muted/20 rounded-xl border border-gray-200 dark:border-border shadow-sm flex flex-col justify-between">
                                 <span className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-widest">Stock Health</span>
-                                <div className="text-2xl font-black text-green-800 dark:text-green-400 mt-1">
-                                    {shelfResult.filter(i => i.lowStock).length || 0} <span className="text-sm font-bold text-gray-500">Items Low</span>
+                                <div className="mt-1">
+                                    {shelfResult.filter(i => i.lowStock).length > 0 ? (
+                                        <div className="flex flex-wrap gap-1">
+                                            {shelfResult.filter(i => i.lowStock).map((item, i) => (
+                                                <span key={i} className="text-[10px] font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800">
+                                                    {item.name}
+                                                </span>
+                                            ))}
+                                            <span className="text-xs font-bold text-red-600 dark:text-red-400 ml-1">Low</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-xl font-black text-green-600 dark:text-green-400">All Good</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -538,27 +549,13 @@ const StockScanningView = () => {
                                 </div>
 
                                 <p className="text-sm text-black dark:text-white font-bold">
-                                    The following items seem out of place for a <strong className="underline decoration-red-500 font-bold">{shelfResult[0]?.category}</strong> shelf. Choose their correct positions:
+                                    The following items seem out of place for a <strong className="underline decoration-red-500 font-bold">{shelfResult[0]?.category}</strong> shelf:
                                 </p>
-                                <div className="space-y-3">
-                                    {shelfResult.map((item, idxx) => item.isMisplaced && (
-                                        <div key={idxx} className="flex flex-col gap-2 bg-white dark:bg-card p-3 rounded-lg border border-red-100 dark:border-red-950 shadow-sm">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm font-bold text-black dark:text-white">{item.name}</span>
-                                                <span className="text-[10px] bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 px-2 py-0.5 rounded font-black uppercase tracking-wider">Misplaced</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-black dark:text-white font-bold">Move to:</span>
-                                                <select
-                                                    value={item.targetShelf || ''}
-                                                    onChange={(e) => updateShelfResultItem(idxx, 'targetShelf', e.target.value)}
-                                                    className="flex-1 bg-gray-50 dark:bg-muted border border-gray-300 dark:border-gray-700 rounded px-2 py-1.5 text-xs font-bold text-black dark:text-white outline-none focus:border-red-500"
-                                                >
-                                                    <option value="">Select Shelf</option>
-                                                    {SHELF_POSITIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    {shelfResult.filter(i => i.isMisplaced).map((item, idx) => (
+                                        <span key={idx} className="text-xs bg-red-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-md">
+                                            {item.name}
+                                        </span>
                                     ))}
                                 </div>
                             </div>
@@ -566,52 +563,47 @@ const StockScanningView = () => {
 
                         {/* 3. Item List & Location Sync */}
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-black dark:text-foreground uppercase">Update Exact Location</label>
-                                <select
-                                    id="final-shelf-select"
-                                    className="bg-white dark:bg-background border-2 border-gray-300 dark:border-gray-700 rounded-lg text-sm px-4 py-2 font-bold text-black dark:text-foreground outline-none focus:border-purple-500 dark:focus:border-purple-600"
-                                    defaultValue=""
-                                >
-                                    <option value="" disabled>Select Shelf ID</option>
-                                    {SHELF_POSITIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}
-                                </select>
-                            </div>
-
-                            <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                            <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mt-4">
                                 <div className="max-h-60 overflow-y-auto bg-gray-50 dark:bg-muted/10">
                                     {shelfResult.map((item, idx) => (
                                         <div key={idx} className={`p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm ${item.isMisplaced ? 'bg-red-50 dark:bg-red-900/10' : 'bg-white dark:bg-card'}`}>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-3 flex-1">
                                                 {item.isMisplaced ? <AlertCircle size={18} className="text-red-600 dark:text-red-500" /> : <CheckCircle size={18} className="text-green-600 dark:text-green-500" />}
                                                 <div>
                                                     <p className="font-bold text-black dark:text-foreground text-sm">{item.name}</p>
                                                     <p className="text-xs text-gray-500 dark:text-muted-foreground font-medium">{item.category} • <span className="text-black dark:text-foreground">{item.visualCount} units</span></p>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <span className={`text-xs font-bold px-2 py-1 rounded border ${item.status === 'match' ? 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-muted-foreground border-gray-300 dark:border-gray-600' : 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'}`}>
-                                                    {item.status === 'match' ? (inventory.find(p => p.id === item.matchedId)?.shelf_position || 'Storage') : 'NEW'}
-                                                </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-gray-500 hidden sm:inline-block">Shelf:</span>
+                                                <select
+                                                    value={item.targetShelf || (inventory.find(p => p.id === item.matchedId)?.shelf_position || '')}
+                                                    onChange={(e) => updateShelfResultItem(idx, 'targetShelf', e.target.value)}
+                                                    className={`w-28 bg-white dark:bg-background border-2 rounded-lg text-xs px-2 py-1.5 font-bold outline-none focus:border-purple-500 ${item.isMisplaced ? 'border-red-300 text-red-700' : 'border-gray-200 dark:border-gray-700 text-black dark:text-foreground'}`}
+                                                >
+                                                    <option value="">Storage</option>
+                                                    {SHELF_POSITIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}
+                                                </select>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="pt-2 flex gap-3">
+                            <div className="pt-4 flex gap-3 w-full">
                                 <button
                                     onClick={() => {
-                                        const globalShelf = document.getElementById('final-shelf-select').value;
-
                                         let count = 0;
                                         shelfResult.filter(i => i.status === 'match').forEach(item => {
                                             const product = inventory.find(p => p.id === item.matchedId);
-                                            // Priority: 1. Item-specific targetShelf (for misplaced) 2. Global dropdown (for everything else)
-                                            const finalTarget = item.targetShelf || globalShelf;
+                                            // Use specific targetShelf override, or default to current ONLY if explicitly confirmed (logic: we only update if targetShelf is present. 
+                                            // Wait, if I bind the dropdown to targetShelf || current, I need to know if it changed.
+                                            // Better: If targetShelf is set (which happens on change OR init for misplaced), use it.
+                                            const newShelf = item.targetShelf;
 
-                                            if (product && finalTarget && product.shelf_position !== finalTarget) {
-                                                LocalStorageService.updateProduct(product.id, { shelf_position: finalTarget });
+                                            // Only update if newShelf is defined AND different from current
+                                            if (product && newShelf && product.shelf_position !== newShelf) {
+                                                LocalStorageService.updateProduct(product.id, { shelf_position: newShelf });
                                                 count++;
                                             }
                                         });
