@@ -109,7 +109,43 @@ const StockScanningView = () => {
                     setError("We couldn't spot any products on the shelf. Please ensure the shelves are well-lit and try again.");
                     return;
                 }
-                setShelfResult(parsedData);
+
+                // Shelf Audit Logic
+                const targetShelf = document.getElementById('target-shelf-select')?.value;
+                if (!targetShelf) {
+                    setError("Target Shelf not selected.");
+                    return;
+                }
+
+                const auditedItems = parsedData.map(item => {
+                    // Match with inventory
+                    const bestMatch = inventory.find(p => {
+                        const pName = (typeof p.name === 'object' ? (p.name.en || Object.values(p.name)[0]) : p.name).toLowerCase();
+                        const iName = (item.name || '').toLowerCase();
+                        return pName.includes(iName) || iName.includes(pName);
+                    });
+
+                    if (bestMatch) {
+                        const isCorrectShelf = bestMatch.shelf_position === targetShelf;
+                        return {
+                            ...item,
+                            matchedId: bestMatch.id,
+                            status: isCorrectShelf ? 'verified' : 'moved',
+                            currentShelf: targetShelf,
+                            oldShelf: bestMatch.shelf_position,
+                            count: item.count || 1
+                        };
+                    } else {
+                        return {
+                            ...item,
+                            status: 'new',
+                            currentShelf: targetShelf,
+                            count: item.count || 1
+                        };
+                    }
+                });
+
+                setShelfResult(auditedItems);
             }
         } catch (err) {
             console.error("Vision API Error:", err);
@@ -410,45 +446,127 @@ const StockScanningView = () => {
             {/* Shelf Analysis Section */}
             <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
                 <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                    <Camera size={20} className="text-secondary-foreground" /> Shelf Analysis
+                    <CheckCircle size={20} className="text-blue-600 dark:text-blue-400" /> Shelf Audit
                 </h2>
-                <p className="text-sm text-muted-foreground mb-4">Take a picture of the shelf to update product locations.</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                    Verify product placement by analyzing shelf photos. Select the shelf you are auditing below.
+                </p>
 
-                <div className="flex gap-4">
+                {/* Target Shelf Selection */}
+                <div className="mb-4">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Target Shelf (Ground Truth)</label>
+                    <select
+                        className="w-full bg-background border border-border rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500/20"
+                        onChange={(e) => {
+                            // Clear previous results when shelf changes to avoid confusion
+                            setShelfResult(null);
+                            // Store target shelf in a temp variable or ref if needed, 
+                            // but for now we can read it directly from the select when processing matches if we used a ref, 
+                            // or better, use state. Let's add state for it.
+                        }}
+                        id="target-shelf-select"
+                        defaultValue=""
+                    >
+                        <option value="" disabled>Select Shelf to Audit</option>
+                        {SHELF_POSITIONS.map(pos => (
+                            <option key={pos} value={pos}>{pos}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex gap-4 mb-6">
                     {/* Camera Option */}
                     <button
-                        onClick={() => handleCameraCapture('shelf')}
-                        className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-border bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                            const shelf = document.getElementById('target-shelf-select').value;
+                            if (!shelf) { alert("Please select a target shelf first."); return; }
+                            handleCameraCapture('shelf');
+                        }}
+                        className="flex-1 flex flex-col items-center justify-center h-28 border-2 border-dashed border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl hover:bg-blue-100/50 transition-colors"
                     >
-                        <Camera className="w-8 h-8 text-secondary-foreground mb-2" />
-                        <p className="text-sm font-medium text-foreground">Take Photo</p>
+                        <Camera className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2" />
+                        <p className="text-xs font-bold text-blue-700 dark:text-blue-300">Audit {document.getElementById('target-shelf-select')?.value ? `Shelf ${document.getElementById('target-shelf-select').value}` : 'Shelf'}</p>
                     </button>
 
                     {/* Gallery Option */}
                     <button
-                        onClick={() => handleNativeGallery('shelf')}
-                        className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-border bg-card rounded-xl hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                            const shelf = document.getElementById('target-shelf-select').value;
+                            if (!shelf) { alert("Please select a target shelf first."); return; }
+                            handleNativeGallery('shelf');
+                        }}
+                        className="flex-1 flex flex-col items-center justify-center h-28 border-2 border-dashed border-border bg-card rounded-xl hover:bg-muted/50 transition-colors"
                     >
-                        <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                        <p className="text-sm font-medium text-muted-foreground">Upload File</p>
+                        <Upload className="w-6 h-6 text-muted-foreground mb-2" />
+                        <p className="text-xs font-medium text-muted-foreground">Upload File</p>
                     </button>
                 </div>
 
                 {shelfResult && (
-                    <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                        <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
-                            <CheckCircle size={16} /> Identified Locations
-                        </h3>
-                        <ul className="space-y-2">
-                            {Array.isArray(shelfResult) ? shelfResult.map((item, idx) => (
-                                <li key={idx} className="flex justify-between text-sm">
-                                    <span className="text-foreground">{item.name}</span>
-                                    <span className="font-mono bg-background px-2 py-0.5 rounded border border-border text-xs">{item.shelf}</span>
-                                </li>
-                            )) : <p className="text-sm text-foreground">{JSON.stringify(shelfResult)}</p>}
-                        </ul>
-                        <button className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium">
-                            Update Shelf Locations
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-foreground">Audit Results</h3>
+                            <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">{shelfResult.length} items detected</span>
+                        </div>
+
+                        <div className="space-y-3">
+                            {shelfResult.map((item, idx) => (
+                                <div key={idx} className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${item.status === 'verified' ? 'bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-800' :
+                                    item.status === 'moved' ? 'bg-yellow-50/50 border-yellow-200 dark:bg-yellow-900/10 dark:border-yellow-800' :
+                                        'bg-blue-50/50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800'
+                                    }`}>
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-sm text-foreground">{item.name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {item.status === 'verified' && <span className="text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle size={10} /> Verified in {item.currentShelf}</span>}
+                                            {item.status === 'moved' && <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-1"><AlertCircle size={10} /> Moved from {item.oldShelf || 'Storage'}</span>}
+                                            {item.status === 'new' && <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1"><Plus size={10} /> New Item</span>}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="block text-lg font-bold">{item.count}</span>
+                                        <span className="text-[10px] text-muted-foreground uppercase">Count</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                // Update Logic
+                                const targetShelf = document.getElementById('target-shelf-select').value;
+                                if (!targetShelf) return;
+
+                                let updatesCount = 0;
+                                shelfResult.forEach(item => {
+                                    if (item.status === 'moved' && item.matchedId) {
+                                        // Update existing product location
+                                        const product = inventory.find(p => p.id === item.matchedId);
+                                        if (product) {
+                                            LocalStorageService.updateProduct(product.id, { shelf_position: targetShelf });
+                                            updatesCount++;
+                                        }
+                                    } else if (item.status === 'new') {
+                                        // Create new product listing
+                                        LocalStorageService.addProduct({
+                                            name: item.name,
+                                            price: 0,
+                                            stock: item.count,
+                                            category: 'Uncategorized',
+                                            max_stock: 50,
+                                            shelf_position: targetShelf
+                                        });
+                                        updatesCount++;
+                                    }
+                                });
+
+                                refreshInventory(true);
+                                alert(`Audit Complete! Updated ${updatesCount} items to Shelf ${targetShelf}.`);
+                                setShelfResult(null);
+                            }}
+                            className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
+                        >
+                            Update All Locations
                         </button>
                     </div>
                 )}
