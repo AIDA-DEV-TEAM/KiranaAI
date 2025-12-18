@@ -25,6 +25,7 @@ const StockScanningView = () => {
     useEffect(() => {
         const storedBillData = localStorage.getItem('bill_review_data');
         const storedIsReviewing = localStorage.getItem('bill_is_reviewing');
+        const storedShelfResult = localStorage.getItem('shelf_organizer_result');
 
         if (storedBillData) {
             try {
@@ -35,13 +36,20 @@ const StockScanningView = () => {
         if (storedIsReviewing) {
             setIsReviewing(storedIsReviewing === 'true');
         }
+
+        if (storedShelfResult) {
+            try {
+                setShelfResult(JSON.parse(storedShelfResult));
+            } catch (e) { console.error("Failed to parse stored shelf result"); }
+        }
     }, []);
 
     // Persistence: Save on Change
     useEffect(() => {
         localStorage.setItem('bill_review_data', JSON.stringify(billData));
         localStorage.setItem('bill_is_reviewing', isReviewing.toString());
-    }, [billData, isReviewing]);
+        localStorage.setItem('shelf_organizer_result', JSON.stringify(shelfResult));
+    }, [billData, isReviewing, shelfResult]);
 
     // Matching Logic
     const matchProducts = (extractedItems) => {
@@ -511,18 +519,18 @@ const StockScanningView = () => {
 
                         {/* 2. Misplaced Items Alert */}
                         {shelfResult.some(i => i.isMisplaced) && (
-                            <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border-2 border-red-200 dark:border-red-900 flex flex-col gap-2">
+                            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-200 dark:border-red-800 flex flex-col gap-2 shadow-sm">
                                 <div className="flex items-center gap-2">
-                                    <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-500" />
-                                    <h4 className="font-bold text-red-900 dark:text-red-200 text-base">Misplaced Items Detected</h4>
+                                    <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                                    <h4 className="font-bold text-black dark:text-white text-base">Misplaced Items Detected</h4>
                                 </div>
 
-                                <p className="text-sm text-red-800 dark:text-red-300">
-                                    The following items seem out of place for a <strong className="underline decoration-red-400">{shelfResult[0]?.category}</strong> shelf:
+                                <p className="text-sm text-gray-900 dark:text-gray-100 font-medium">
+                                    The following items seem out of place for a <strong className="underline decoration-red-500 font-bold">{shelfResult[0]?.category}</strong> shelf:
                                 </p>
                                 <div className="flex flex-wrap gap-2 mt-1">
                                     {shelfResult.filter(i => i.isMisplaced).map((item, idx) => (
-                                        <span key={idx} className="text-xs bg-white dark:bg-red-950 text-red-800 dark:text-red-200 px-3 py-1.5 rounded-lg font-bold border border-red-200 dark:border-red-800 shadow-sm">
+                                        <span key={idx} className="text-xs bg-red-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-md">
                                             {item.name}
                                         </span>
                                     ))}
@@ -565,32 +573,44 @@ const StockScanningView = () => {
                                 </div>
                             </div>
 
-                            <button
-                                onClick={() => {
-                                    const targetShelf = document.getElementById('final-shelf-select').value;
-                                    if (!targetShelf) {
-                                        alert("Please select the current Shelf ID to sync locations.");
-                                        return;
-                                    }
-
-                                    let count = 0;
-                                    shelfResult.filter(i => i.status === 'match').forEach(item => {
-                                        const product = inventory.find(p => p.id === item.matchedId);
-                                        if (product && product.shelf_position !== targetShelf) {
-                                            LocalStorageService.updateProduct(product.id, { shelf_position: targetShelf });
-                                            count++;
+                            <div className="pt-2 flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        const targetShelf = document.getElementById('final-shelf-select').value;
+                                        if (!targetShelf) {
+                                            alert("Please select the current Shelf ID to sync locations.");
+                                            return;
                                         }
-                                    });
 
-                                    refreshInventory(true);
-                                    alert(`Successfully moved ${count} items to Shelf ${targetShelf}!`);
-                                    setShelfResult(null);
-                                }}
-                                className="w-full py-4 bg-purple-700 dark:bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-800 dark:hover:bg-purple-700 active:scale-95 transition-all flex items-center justify-center gap-2 text-base"
-                            >
-                                <Save size={20} />
-                                CONFIRM & UPDATE LOCATIONS
-                            </button>
+                                        let count = 0;
+                                        shelfResult.filter(i => i.status === 'match').forEach(item => {
+                                            const product = inventory.find(p => p.id === item.matchedId);
+                                            if (product && product.shelf_position !== targetShelf) {
+                                                LocalStorageService.updateProduct(product.id, { shelf_position: targetShelf });
+                                                count++;
+                                            }
+                                        });
+
+                                        refreshInventory(true);
+                                        alert(`Successfully moved ${count} items to Shelf ${targetShelf}!`);
+                                        setShelfResult(null);
+                                        localStorage.removeItem('shelf_organizer_result');
+                                    }}
+                                    className="flex-1 py-4 bg-purple-700 dark:bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-800 dark:hover:bg-purple-700 active:scale-95 transition-all flex items-center justify-center gap-2 text-base"
+                                >
+                                    <Save size={20} />
+                                    CONFIRM & UPDATE LOCATIONS
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShelfResult(null);
+                                        localStorage.removeItem('shelf_organizer_result');
+                                    }}
+                                    className="px-6 py-4 bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-muted/80 transition-all"
+                                >
+                                    CANCEL
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
