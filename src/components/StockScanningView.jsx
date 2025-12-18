@@ -451,15 +451,15 @@ const StockScanningView = () => {
             </div>
 
             {/* Smart Shelf Organizer Section */}
-            <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
-                <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                    <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-lg">
-                        <CheckCircle size={20} className="text-purple-700 dark:text-purple-400" />
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-black">
+                    <div className="bg-purple-100 p-2 rounded-lg">
+                        <CheckCircle size={24} className="text-purple-700" />
                     </div>
                     Smart Shelf Organizer
                 </h2>
 
-                <p className="text-sm text-muted-foreground mb-6">
+                <p className="text-sm text-gray-600 mb-6">
                     Analyze shelf layout, find misplaced items, and bulk-update product locations.
                 </p>
 
@@ -467,19 +467,19 @@ const StockScanningView = () => {
                     {/* Camera */}
                     <button
                         onClick={() => handleCameraCapture('shelf')}
-                        className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/10 rounded-xl hover:bg-purple-100 transition-colors group"
+                        className="flex-1 flex flex-col items-center justify-center h-32 bg-white border-2 border-dashed border-purple-500 rounded-xl hover:bg-purple-50 transition-colors shadow-sm"
                     >
-                        <Camera className="w-8 h-8 text-purple-700 dark:text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-bold text-purple-900 dark:text-purple-100">Scan Shelf</p>
+                        <Camera className="w-8 h-8 text-purple-700 mb-2" />
+                        <p className="text-sm font-bold text-purple-900">Scan Shelf</p>
                     </button>
 
                     {/* Gallery */}
                     <button
                         onClick={() => handleNativeGallery('shelf')}
-                        className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-border bg-card rounded-xl hover:bg-muted/50 transition-colors group"
+                        className="flex-1 flex flex-col items-center justify-center h-32 bg-white border-2 border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
                     >
-                        <Upload className="w-8 h-8 text-muted-foreground mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-medium text-foreground">Upload Image</p>
+                        <Upload className="w-8 h-8 text-gray-500 mb-2" />
+                        <p className="text-sm font-bold text-gray-700">Upload Image</p>
                     </button>
                 </div>
 
@@ -487,19 +487,19 @@ const StockScanningView = () => {
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
 
                         {/* 1. Insights Dashboard */}
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-4">
                             {/* Dominant Category */}
-                            <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800">
-                                <span className="text-[10px] uppercase font-extrabold text-indigo-600 dark:text-indigo-400 tracking-wider">Dominant Category</span>
-                                <div className="text-xl font-black text-indigo-900 dark:text-indigo-100 mt-1">
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Dominant Category</span>
+                                <div className="text-2xl font-black text-blue-900 mt-1">
                                     {shelfResult.reduce((a, b, i, arr) => (arr.filter(v => v.category === a).length >= arr.filter(v => v.category === b).length ? a : b), null)?.category || "Mixed"}
                                 </div>
                             </div>
 
                             {/* Shelf Value */}
-                            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                                <span className="text-[10px] uppercase font-extrabold text-emerald-600 dark:text-emerald-400 tracking-wider">Shelf Value</span>
-                                <div className="text-xl font-black text-emerald-900 dark:text-emerald-100 mt-1">
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-sm">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Shelf Value</span>
+                                <div className="text-2xl font-black text-green-800 mt-1">
                                     ₹{shelfResult.reduce((sum, item) => sum + ((inventory.find(p => p.id === item.matchedId)?.price || 0) * item.visualCount), 0).toLocaleString()}
                                 </div>
                             </div>
@@ -507,20 +507,21 @@ const StockScanningView = () => {
 
                         {/* 2. Misplaced Items Alert */}
                         {shelfResult.some(i => i.isMisplaced) && (
-                            <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border-2 border-red-100 dark:border-red-900 flex items-start gap-3">
-                                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                                <div>
-                                    <h4 className="font-extrabold text-red-900 dark:text-red-100 text-sm">Misplaced Items Detected!</h4>
-                                    <p className="text-xs text-red-800 dark:text-red-200 font-medium mt-1">
-                                        The following items seem out of place for a <strong className="text-red-950 dark:text-red-50 decoration-red-300 underline underline-offset-2">{shelfResult[0]?.category}</strong> shelf:
-                                    </p>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {shelfResult.filter(i => i.isMisplaced).map((item, idx) => (
-                                            <span key={idx} className="text-[11px] bg-white dark:bg-red-950 text-red-900 dark:text-red-100 px-2 py-1 rounded-md font-bold border border-red-200 shadow-sm">
-                                                {item.name}
-                                            </span>
-                                        ))}
-                                    </div>
+                            <div className="bg-red-50 p-4 rounded-xl border-2 border-red-200 flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <AlertCircle className="w-6 h-6 text-red-600" />
+                                    <h4 className="font-bold text-red-900 text-base">Misplaced Items Detected</h4>
+                                </div>
+
+                                <p className="text-sm text-red-800">
+                                    The following items seem out of place for a <strong className="underline">{shelfResult[0]?.category}</strong> shelf:
+                                </p>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    {shelfResult.filter(i => i.isMisplaced).map((item, idx) => (
+                                        <span key={idx} className="text-xs bg-white text-red-800 px-3 py-1.5 rounded-lg font-bold border border-red-200 shadow-sm">
+                                            {item.name}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -528,10 +529,10 @@ const StockScanningView = () => {
                         {/* 3. Item List & Location Sync */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <label className="text-xs font-bold text-foreground uppercase">Update Exact Location</label>
+                                <label className="text-sm font-bold text-black uppercase">Update Exact Location</label>
                                 <select
                                     id="final-shelf-select"
-                                    className="bg-background border-2 border-purple-100 dark:border-purple-900 rounded-lg text-sm px-3 py-2 font-medium outline-none focus:ring-2 focus:ring-purple-500 text-foreground"
+                                    className="bg-white border-2 border-gray-300 rounded-lg text-sm px-4 py-2 font-bold text-black outline-none focus:border-purple-500"
                                     defaultValue=""
                                 >
                                     <option value="" disabled>Select Shelf ID</option>
@@ -539,23 +540,25 @@ const StockScanningView = () => {
                                 </select>
                             </div>
 
-                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                                {shelfResult.map((item, idx) => (
-                                    <div key={idx} className={`p-3 rounded-lg border flex items-center justify-between text-sm ${item.isMisplaced ? 'bg-red-50 border-red-200 dark:bg-red-900/10 dark:border-red-800' : 'bg-card border-border'}`}>
-                                        <div className="flex items-center gap-3">
-                                            {item.isMisplaced ? <AlertCircle size={16} className="text-red-600" /> : <CheckCircle size={16} className="text-green-600" />}
-                                            <div>
-                                                <p className="font-bold text-foreground text-sm">{item.name}</p>
-                                                <p className="text-[11px] text-muted-foreground font-medium">{item.category} • <span className="text-foreground">{item.visualCount} units</span></p>
+                            <div className="border border-gray-200 rounded-xl overflow-hidden">
+                                <div className="max-h-60 overflow-y-auto bg-gray-50">
+                                    {shelfResult.map((item, idx) => (
+                                        <div key={idx} className={`p-4 border-b border-gray-200 flex items-center justify-between text-sm ${item.isMisplaced ? 'bg-red-50' : 'bg-white'}`}>
+                                            <div className="flex items-center gap-3">
+                                                {item.isMisplaced ? <AlertCircle size={18} className="text-red-600" /> : <CheckCircle size={18} className="text-green-600" />}
+                                                <div>
+                                                    <p className="font-bold text-black text-sm">{item.name}</p>
+                                                    <p className="text-xs text-gray-500 font-medium">{item.category} • <span className="text-black">{item.visualCount} units</span></p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className={`text-xs font-bold px-2 py-1 rounded border ${item.status === 'match' ? 'bg-gray-100 text-gray-800 border-gray-300' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>
+                                                    {item.status === 'match' ? (inventory.find(p => p.id === item.matchedId)?.shelf_position || 'Storage') : 'NEW'}
+                                                </span>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className={`text-[10px] font-bold px-2 py-1 rounded border ${item.status === 'match' ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
-                                                {item.status === 'match' ? (inventory.find(p => p.id === item.matchedId)?.shelf_position || 'Storage') : 'NEW'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
 
                             <button
@@ -579,10 +582,10 @@ const StockScanningView = () => {
                                     alert(`Successfully moved ${count} items to Shelf ${targetShelf}!`);
                                     setShelfResult(null);
                                 }}
-                                className="w-full py-3.5 bg-purple-700 text-white font-bold rounded-xl shadow-md hover:bg-purple-800 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-purple-700 text-white font-bold rounded-xl shadow-md hover:bg-purple-800 active:scale-95 transition-all flex items-center justify-center gap-2 text-base"
                             >
-                                <Save size={18} />
-                                Update Product Locations
+                                <Save size={20} />
+                                CONFIRM & UPDATE LOCATIONS
                             </button>
                         </div>
                     </div>
