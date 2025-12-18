@@ -448,9 +448,10 @@ const StockScanningView = () => {
                 <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
                     <CheckCircle size={20} className="text-blue-600 dark:text-blue-400" /> Shelf Audit
                 </h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                    Verify product placement by analyzing shelf photos. Select the shelf you are auditing below.
-                </p>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4 text-xs text-blue-800 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                    <strong>Pro Tip:</strong> For 100% accuracy, capture <strong>one specific shelf</strong> at a time.
+                    Scanning multiple shelves at once may cause products to be assigned to the wrong location.
+                </div>
 
                 {/* Target Shelf Selection */}
                 <div className="mb-4">
