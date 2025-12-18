@@ -6,6 +6,7 @@ import { useAppData } from '../context/AppDataContext';
 import { LocalStorageService } from '../services/LocalStorageService';
 
 const SHELF_POSITIONS = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'D1', 'D2', 'Front', 'Counter', 'Storage'];
+const CATEGORIES = ['Grains', 'Pulses', 'Oil', 'Flour', 'Spices', 'Dairy', 'Snacks', 'Essentials', 'Beverage', 'Fruit', 'Veg', 'Meat', 'Seafood', 'Frozen', 'Sweets', 'Fast Food', 'Uncategorized'];
 
 const StockScanningView = () => {
     // Context
@@ -58,6 +59,8 @@ const StockScanningView = () => {
                 quantity: item.quantity || 1,
                 unit_price: item.unit_price || (bestMatch ? bestMatch.price : 0),
                 shelf_position: bestMatch ? (bestMatch.shelf_position || 'Storage') : 'Storage',
+                category: bestMatch ? bestMatch.category : 'Uncategorized',
+                max_stock: bestMatch ? bestMatch.max_stock : 50,
                 matchedProductId: bestMatch ? bestMatch.id : 'new',
                 isNew: !bestMatch
             };
@@ -177,8 +180,8 @@ const StockScanningView = () => {
                         name: item.name,
                         price: parseFloat(item.unit_price) || 0,
                         stock: parseInt(item.quantity) || 1,
-                        category: 'Uncategorized', // Default
-                        max_stock: 50,
+                        category: item.category || 'Uncategorized',
+                        max_stock: parseInt(item.max_stock) || 50,
                         shelf_position: item.shelf_position || 'Storage'
                     };
                     LocalStorageService.addProduct(newProduct);
@@ -288,24 +291,54 @@ const StockScanningView = () => {
                                         />
                                     </div>
 
-                                    {/* Middle Row: Match */}
-                                    <div>
-                                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold block mb-1">Matched Product</label>
-                                        <select
-                                            value={item.matchedProductId}
-                                            onChange={(e) => updateBillItem(idx, 'matchedProductId', e.target.value)}
-                                            className="w-full bg-muted/30 border border-border rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-                                        >
-                                            <option value="new" className="font-bold text-primary">+ Create New Product</option>
-                                            <option value="skip" className="text-muted-foreground">Skip (Don't Add)</option>
-                                            <optgroup label="Existing Inventory">
-                                                {inventory.map(p => (
-                                                    <option key={p.id} value={p.id}>
-                                                        {typeof p.name === 'object' ? (p.name.en || Object.values(p.name)[0]) : p.name}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        </select>
+                                    {/* Middle Row: Match & Conditional Fields */}
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold block mb-1">Matched Product</label>
+                                            <select
+                                                value={item.matchedProductId}
+                                                onChange={(e) => updateBillItem(idx, 'matchedProductId', e.target.value)}
+                                                className="w-full bg-muted/30 border border-border rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                            >
+                                                <option value="new" className="font-bold text-primary">+ Create New Product</option>
+                                                <option value="skip" className="text-muted-foreground">Skip (Don't Add)</option>
+                                                <optgroup label="Existing Inventory">
+                                                    {inventory.map(p => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {typeof p.name === 'object' ? (p.name.en || Object.values(p.name)[0]) : p.name}
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            </select>
+                                        </div>
+
+                                        {/* Conditional Fields for New Products */}
+                                        {item.matchedProductId === 'new' && (
+                                            <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2">
+                                                <div>
+                                                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold block mb-1">Category</label>
+                                                    <select
+                                                        value={item.category || 'Uncategorized'}
+                                                        onChange={(e) => updateBillItem(idx, 'category', e.target.value)}
+                                                        className="w-full bg-background border border-border rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    >
+                                                        {CATEGORIES.filter(c => c !== 'All').map(c => (
+                                                            <option key={c} value={c}>{c}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold block mb-1">Max Stock</label>
+                                                    <input
+                                                        type="number"
+                                                        value={item.max_stock || 50}
+                                                        onChange={(e) => updateBillItem(idx, 'max_stock', e.target.value)}
+                                                        className="w-full bg-background border border-border rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                                        placeholder="50"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Bottom Grid: Price | Shelf | Qty */}

@@ -113,11 +113,17 @@ export const CATEGORY_IMAGES = {
     'Spices': '/assets/defaults/spices.png',
     'Dairy': '/assets/defaults/milk.png',
     'Veg': '/assets/defaults/vegetables.png',
-    'Beverages': '/assets/defaults/beverages.png',
+    'Fruit': '/assets/defaults/fruit.png',
+    'Beverage': '/assets/defaults/beverages.png',
     'Snacks': '/assets/defaults/snacks.png',
+    'Sweets': '/assets/defaults/sweets.png',
+    'Frozen': '/assets/defaults/frozen.png',
+    'Meat': '/assets/defaults/meat.png',
+    'Seafood': '/assets/defaults/seafood.png',
+    'Fast Food': '/assets/defaults/fast_food.png',
     'Cleaning': '/assets/defaults/cleaning.png',
     'Household': '/assets/defaults/cleaning.png',
-    'Personal Care': '/assets/defaults/cleaning.png', // Fallback to cleaning for now or generate specific if needed
+    'Personal Care': '/assets/defaults/cleaning.png',
 };
 
 /**
