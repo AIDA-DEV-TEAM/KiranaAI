@@ -57,17 +57,19 @@ async def analyze_shelf(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(contents))
         
         prompt = """
-        You are an Expert Retail Inventory Manager. 
-        Analyze the provided image of retail shelves (single or multiple racks) and extract the visible products into a structured JSON array.
+        You are an Expert Retail Inventory Manager / Planogram Specialist.
+        Analyze the provided image of a retail shelf.
         
-        The JSON objects must have the following fields:
-        - "name": Identify the product name, brand, and variant visible on the label. Be specific (e.g., "Maggi Masala Noodles", "Lays Classic Salted").
-        - "count": Estimate the distinct count of this specific item visible across ALL shelves in the image. Default to 1 if unsure.
+        Extract the visible products into a structured JSON array.
+        For each product, provide:
+        - "name": Specific product name/brand (e.g., "Coca Cola 2L", "Dove Soap").
+        - "count": Count of this item visible.
+        - "category": Your best guess of the broad category based on visual cues (e.g., "Beverage", "Snacks", "Cleaning", "Personal Care", "Grains").
+        
+        Analyze the shelf arrangement:
+        - "misplaced": Boolean. Set to true if this item looks clearly out of place compared to its neighbors (e.g., a Shampoo bottle in the Chips section). Default false.
 
-        Exception Handling:
-        - If the image is very blurry or products are unrecognizable, return a JSON object with: {"error": "Unable to identify products. Please re-upload a clearer image."}
-        
-        Return the data in a STRICT JSON array format. Do not include any markdown formatting (like ```json ... ```).
+        Strict JSON array output. No markdown.
         """
         
         response = client.models.generate_content(

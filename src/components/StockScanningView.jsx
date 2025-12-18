@@ -110,7 +110,7 @@ const StockScanningView = () => {
                     return;
                 }
 
-                // Global Shelf Audit Logic (No Target Required)
+                // Smart Shelf Organizer Logic
                 const auditedItems = parsedData.map(item => {
                     // Match with inventory
                     const bestMatch = inventory.find(p => {
@@ -119,30 +119,40 @@ const StockScanningView = () => {
                         return pName.includes(iName) || iName.includes(pName);
                     });
 
-                    if (bestMatch) {
-                        return {
-                            ...item,
-                            matchedId: bestMatch.id,
-                            status: 'match',
-                            systemStock: bestMatch.stock || 0,
-                            visualCount: item.count || 1,
-                            name: typeof bestMatch.name === 'object' ? (bestMatch.name.en || Object.values(bestMatch.name)[0]) : bestMatch.name
-                        };
-                    } else {
-                        return {
-                            ...item,
-                            status: 'new',
-                            visualCount: item.count || 1,
-                            // Defaults for new item
-                            category: 'Uncategorized',
-                            price: 0,
-                            shelf_position: 'Storage',
-                            max_stock: 50
-                        };
-                    }
+                    // Determine Category: Use matched product's category if available (source of truth), else AI guess, else Uncategorized
+                    const resolvedCategory = bestMatch?.category || item.category || 'Uncategorized';
+
+                    return {
+                        ...item,
+                        matchedId: bestMatch ? bestMatch.id : null,
+                        status: bestMatch ? 'match' : 'new',
+                        visualCount: item.count || 1,
+                        name: bestMatch ? (typeof bestMatch.name === 'object' ? (bestMatch.name.en || Object.values(bestMatch.name)[0]) : bestMatch.name) : item.name,
+                        category: resolvedCategory,
+                        isMisplaced: item.misplaced === true // AI Flag
+                    };
                 });
 
-                setShelfResult(auditedItems);
+                // Post-process: Refine Misplaced based on Dominant Category
+                // 1. Calculate Dominant Category
+                const catCounts = {};
+                auditedItems.forEach(i => {
+                    const cat = i.category;
+                    catCounts[cat] = (catCounts[cat] || 0) + 1;
+                });
+                const dominantCategory = Object.keys(catCounts).reduce((a, b) => catCounts[a] > catCounts[b] ? a : b, 'Uncategorized');
+
+                // 2. Mark Misplaced if category mismatch
+                const finalItems = auditedItems.map(item => {
+                    const isCategoryMismatch = dominantCategory !== 'Uncategorized' && item.category !== 'Uncategorized' && item.category !== dominantCategory;
+
+                    return {
+                        ...item,
+                        isMisplaced: item.isMisplaced || isCategoryMismatch
+                    };
+                });
+
+                setShelfResult(finalItems);
             }
         } catch (err) {
             console.error("Vision API Error:", err);
@@ -440,181 +450,141 @@ const StockScanningView = () => {
                 )}
             </div>
 
-            {/* Shelf Analysis Section */}
+            {/* Smart Shelf Organizer Section */}
             <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
                 <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                    <CheckCircle size={20} className="text-blue-600 dark:text-blue-400" /> Global Stock Audit
+                    <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-lg">
+                        <CheckCircle size={20} className="text-purple-600 dark:text-purple-400" />
+                    </div>
+                    Smart Shelf Organizer
                 </h2>
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4 text-xs text-blue-800 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
-                    <strong>Capture Everything:</strong> Take a photo of an entire rack or multiple shelves.
-                    The app will count visible items and let you sync stock levels or add new products instantly.
-                </div>
+
+                <p className="text-sm text-muted-foreground mb-6">
+                    Analyze shelf layout, find misplaced items, and bulk-update product locations.
+                </p>
 
                 <div className="flex gap-4 mb-6">
-                    {/* Camera Option */}
+                    {/* Camera */}
                     <button
                         onClick={() => handleCameraCapture('shelf')}
-                        className="flex-1 flex flex-col items-center justify-center h-28 border-2 border-dashed border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl hover:bg-blue-100/50 transition-colors"
+                        className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10 rounded-xl hover:bg-purple-100/50 transition-colors group"
                     >
-                        <Camera className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2" />
-                        <p className="text-xs font-bold text-blue-700 dark:text-blue-300">Scan Racks</p>
+                        <Camera className="w-8 h-8 text-purple-600 dark:text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-xs font-bold text-purple-700 dark:text-purple-300">Scan Shelf</p>
                     </button>
 
-                    {/* Gallery Option */}
+                    {/* Gallery */}
                     <button
                         onClick={() => handleNativeGallery('shelf')}
-                        className="flex-1 flex flex-col items-center justify-center h-28 border-2 border-dashed border-border bg-card rounded-xl hover:bg-muted/50 transition-colors"
+                        className="flex-1 flex flex-col items-center justify-center h-32 border-2 border-dashed border-border bg-card rounded-xl hover:bg-muted/50 transition-colors group"
                     >
-                        <Upload className="w-6 h-6 text-muted-foreground mb-2" />
-                        <p className="text-xs font-medium text-muted-foreground">Upload File</p>
+                        <Upload className="w-8 h-8 text-muted-foreground mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-xs font-medium text-muted-foreground">Upload Image</p>
                     </button>
                 </div>
 
                 {shelfResult && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-foreground">Detected Inventory</h3>
-                            <span className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">{shelfResult.length} items</span>
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+
+                        {/* 1. Insights Dashboard */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* Dominant Category */}
+                            <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                                <span className="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">Dominant Category</span>
+                                <div className="text-xl font-black text-indigo-700 dark:text-indigo-300 mt-1">
+                                    {shelfResult.reduce((a, b, i, arr) => (arr.filter(v => v.category === a).length >= arr.filter(v => v.category === b).length ? a : b), null)?.category || "Mixed"}
+                                </div>
+                            </div>
+
+                            {/* Shelf Value */}
+                            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-100 dark:border-green-800">
+                                <span className="text-[10px] uppercase font-bold text-green-600 tracking-wider">Shelf Value</span>
+                                <div className="text-xl font-black text-green-700 dark:text-green-300 mt-1">
+                                    ₹{shelfResult.reduce((sum, item) => sum + ((inventory.find(p => p.id === item.matchedId)?.price || 0) * item.visualCount), 0).toLocaleString()}
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="space-y-3">
-                            {shelfResult.map((item, idx) => (
-                                <div key={idx} className={`p-3 rounded-xl border ${item.status === 'match' ? 'bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-800' :
-                                        'bg-blue-50/50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800'
-                                    }`}>
-                                    {/* Header Row */}
-                                    <div className="flex items-start justify-between gap-3 mb-2">
-                                        <div className="flex-1">
-                                            {item.status === 'match' ? (
-                                                <>
-                                                    <p className="font-semibold text-sm text-foreground">{item.name}</p>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <span className="text-xs bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded text-muted-foreground">System: {item.systemStock}</span>
-                                                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Seen: {item.visualCount}</span>
-                                                        {item.systemStock !== item.visualCount && (
-                                                            <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse">Mismatch</span>
-                                                        )}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase">New Item</span>
-                                                    </div>
-                                                    <input
-                                                        value={item.name}
-                                                        onChange={(e) => {
-                                                            const newRes = [...shelfResult];
-                                                            newRes[idx].name = e.target.value;
-                                                            setShelfResult(newRes);
-                                                        }}
-                                                        className="w-full bg-transparent border-b border-dashed border-blue-300 text-sm font-semibold outline-none focus:border-blue-600"
-                                                        placeholder="Product Name"
-                                                    />
-                                                </div>
-                                            )}
+                        {/* 2. Misplaced Items Alert */}
+                        {shelfResult.some(i => i.isMisplaced) && (
+                            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800 flex items-start gap-3">
+                                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                                <div>
+                                    <h4 className="font-bold text-red-800 dark:text-red-300 text-sm">Misplaced Items Detected!</h4>
+                                    <p className="text-xs text-red-700 dark:text-red-400 mt-1">
+                                        The following items seem out of place for a <strong>{shelfResult[0]?.category}</strong> shelf:
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {shelfResult.filter(i => i.isMisplaced).map((item, idx) => (
+                                            <span key={idx} className="text-[10px] bg-red-100 dark:bg-red-900/40 text-red-700 px-2 py-1 rounded-full font-bold border border-red-200">
+                                                {item.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 3. Item List & Location Sync */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-muted-foreground uppercase">Update Exact Location</label>
+                                <select
+                                    id="final-shelf-select"
+                                    className="bg-background border border-border rounded-lg text-sm px-3 py-1.5 outline-none focus:ring-2 focus:ring-purple-500"
+                                    defaultValue=""
+                                >
+                                    <option value="" disabled>Select Shelf ID</option>
+                                    {SHELF_POSITIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                {shelfResult.map((item, idx) => (
+                                    <div key={idx} className={`p-3 rounded-lg border flex items-center justify-between text-sm ${item.isMisplaced ? 'bg-red-50/50 border-red-100' : 'bg-card border-border'}`}>
+                                        <div className="flex items-center gap-3">
+                                            {item.isMisplaced ? <AlertCircle size={14} className="text-red-500" /> : <CheckCircle size={14} className="text-green-500" />}
+                                            <div>
+                                                <p className="font-medium text-foreground">{item.name}</p>
+                                                <p className="text-[10px] text-muted-foreground">{item.category} • {item.visualCount} units</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+                                                {item.status === 'match' ? (inventory.find(p => p.id === item.matchedId)?.shelf_position || 'Storage') : 'New'}
+                                            </span>
                                         </div>
                                     </div>
+                                ))}
+                            </div>
 
-                                    {/* Action Row */}
-                                    {item.status === 'new' && (
-                                        <div className="grid grid-cols-2 gap-2 mt-3 p-2 bg-background/50 rounded-lg">
-                                            <div>
-                                                <label className="text-[9px] uppercase font-bold text-muted-foreground">Category</label>
-                                                <select
-                                                    value={item.category}
-                                                    onChange={(e) => {
-                                                        const newRes = [...shelfResult];
-                                                        newRes[idx].category = e.target.value;
-                                                        setShelfResult(newRes);
-                                                    }}
-                                                    className="w-full text-xs bg-transparent border-b border-border outline-none"
-                                                >
-                                                    {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-[9px] uppercase font-bold text-muted-foreground">Shelf</label>
-                                                <select
-                                                    value={item.shelf_position}
-                                                    onChange={(e) => {
-                                                        const newRes = [...shelfResult];
-                                                        newRes[idx].shelf_position = e.target.value;
-                                                        setShelfResult(newRes);
-                                                    }}
-                                                    className="w-full text-xs bg-transparent border-b border-border outline-none"
-                                                >
-                                                    {SHELF_POSITIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-[9px] uppercase font-bold text-muted-foreground">Price</label>
-                                                <input
-                                                    type="number"
-                                                    value={item.price}
-                                                    onChange={(e) => {
-                                                        const newRes = [...shelfResult];
-                                                        newRes[idx].price = e.target.value;
-                                                        setShelfResult(newRes);
-                                                    }}
-                                                    className="w-full text-xs bg-transparent border-b border-border outline-none" placeholder="0"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-[9px] uppercase font-bold text-muted-foreground">Stock (Seen)</label>
-                                                <input
-                                                    type="number"
-                                                    value={item.visualCount}
-                                                    onChange={(e) => {
-                                                        const newRes = [...shelfResult];
-                                                        newRes[idx].visualCount = e.target.value;
-                                                        setShelfResult(newRes);
-                                                    }}
-                                                    className="w-full text-xs bg-transparent border-b border-border outline-none font-bold text-blue-600"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        <button
-                            onClick={() => {
-                                // Bulk Sync Logic
-                                let updatesCount = 0;
-                                let newCount = 0;
-
-                                shelfResult.forEach(item => {
-                                    if (item.status === 'match') {
-                                        // Update Stock for existing
-                                        const product = inventory.find(p => p.id === item.matchedId);
-                                        if (product) {
-                                            LocalStorageService.updateProduct(product.id, { stock: parseInt(item.visualCount) || 0 });
-                                            updatesCount++;
-                                        }
-                                    } else if (item.status === 'new') {
-                                        // Create new product
-                                        LocalStorageService.addProduct({
-                                            name: item.name,
-                                            price: parseFloat(item.price) || 0,
-                                            stock: parseInt(item.visualCount) || 1,
-                                            category: item.category || 'Uncategorized',
-                                            max_stock: parseInt(item.max_stock) || 50,
-                                            shelf_position: item.shelf_position || 'Storage'
-                                        });
-                                        newCount++;
+                            <button
+                                onClick={() => {
+                                    const targetShelf = document.getElementById('final-shelf-select').value;
+                                    if (!targetShelf) {
+                                        alert("Please select the current Shelf ID to sync locations.");
+                                        return;
                                     }
-                                });
 
-                                refreshInventory(true);
-                                alert(`Sync Complete!\nUpdated Stock: ${updatesCount} items\nCreated New: ${newCount} items`);
-                                setShelfResult(null);
-                            }}
-                            className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all"
-                        >
-                            Sync All Inventory
-                        </button>
+                                    let count = 0;
+                                    shelfResult.filter(i => i.status === 'match').forEach(item => {
+                                        const product = inventory.find(p => p.id === item.matchedId);
+                                        if (product && product.shelf_position !== targetShelf) {
+                                            LocalStorageService.updateProduct(product.id, { shelf_position: targetShelf });
+                                            count++;
+                                        }
+                                    });
+
+                                    refreshInventory(true);
+                                    alert(`Successfully moved ${count} items to Shelf ${targetShelf}!`);
+                                    setShelfResult(null);
+                                }}
+                                className="w-full py-3 bg-purple-600 text-white font-bold rounded-xl shadow-lg hover:bg-purple-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Save size={18} />
+                                Update Product Locations
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
