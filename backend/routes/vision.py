@@ -66,6 +66,7 @@ async def analyze_shelf(file: UploadFile = File(...)):
         - "count": Count of this item visible.
         - "category": Broad category (e.g., "Beverage", "Snacks").
         - "low_stock": Boolean. Set to true if there is significant empty shelf space for this product, suggesting it needs restocking.
+        - "detected_shelf_id": The literal text of the shelf label (e.g., 'A1', 'B2') that this product is physically sitting on or closest to. If no label is visible, return null.
         
         Analyze the shelf arrangement:
         - "misplaced": Boolean. Set to true if this item looks clearly out of place.
