@@ -44,10 +44,14 @@ async def process_bill(file: UploadFile = File(...)):
         You are an expert OCR and Data Extraction Specialist.
         Analyze the provided bill of lading or invoice image.
         
+        Strategy:
+        1. Identify the table structure and headers (e.g., 'Item Name', 'Qty', 'Rate', 'Amount').
+        2. Distinguish between 'MRP' (Maximum Retail Price) and 'Rate' (Unit Price). We need the 'Rate' or 'Unit Price'.
+        
         Extract the line items into a pure JSON array. Each object must contain:
         - "name": Full product description/name.
         - "quantity": The count/qty purchased (number). Default to 1 if not explicitly stated.
-        - "unit_price": The price per single unit (number). If only total is shown, calculate unit price.
+        - "unit_price": The price per single unit (number). Look for 'Rate' or 'Price' column. Do NOT return the 'Total Amount'.
         
         Handle handwritten text, poor lighting, and Indian currency formats.
         Output strictly the JSON array.
