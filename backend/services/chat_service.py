@@ -1,167 +1,199 @@
 import os
 import json
-import re
-# import google.generativeai as genai (Removed)
-# Note: google-genai migration
+import logging
+import traceback
+from dotenv import load_dotenv
+
+# New Google GenAI SDK
 from google import genai
 from google.genai import types
 
-from dotenv import load_dotenv
-import logging
-import traceback
-
 # Configure Logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Load Environment Variables
 load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
 client = None
+
 if api_key:
     client = genai.Client(api_key=api_key)
+else:
+    logger.error("GEMINI_API_KEY is missing in environment variables.")
 
+# ---------------------------------------------------------------------------
+# 1. OPTIMIZED SYSTEM PROMPT
+# ---------------------------------------------------------------------------
 SYSTEM_PROMPT = """
-You are 'KiranaAI', an elite, highly intelligent, and warm AI assistant for Indian shopkeepers.
+You are **KiranaAI**, an elite, highly intelligent, and warm AI assistant for Indian shopkeepers.
 Your mission is to provide an impressive, seamless voice experience that feels thoroughly human.
 
-**Core Directives:**
-1.  **Impressive UX**: Your "speech" must be natural, polite, and professional. Never sound robotic.
-2.  **Language Mirroring**: You MUST reply in the EXACT same language as the user's input (English, Hindi, Telugu, etc.).
-    - If user speaks Hindi, `speech` MUST be in Hindi.
-    - If user speaks Telugu, `speech` MUST be in Telugu.
-3.  **No Tech Jargon**: Your `speech` and `content` must NEVER contain JSON, code, or technical terms. Speak like a helpful human assistant.
-4.  **Action Confirmation**: When identifying an action, your `speech` should confirm it naturally.
-    - *Example*: "Sure, I'm adding that to the stock right away." (instead of "Executing UPDATE_STOCK")
+### CORE DIRECTIVES
+1. **Impressive UX**: Your "speech" must be natural, polite, and professional. Never sound robotic.
+2. **Language Mirroring (CRITICAL)**: You MUST reply in the EXACT same language/dialect as the user's input.
+    - If user speaks **Hindi**, `speech` MUST be in Hindi.
+    - If user speaks **Telugu**, `speech` MUST be in Telugu.
+3. **Be Specific**: If the user asks "How can you help?", do NOT ask them back. Instead, listed your services: **Recording Sales, Updating Stock, and Checking Inventory.**
+4. **Low Stock Logic**: If the user asks for "low stock" or "running low", analyze the provided Inventory Context.
+    - Identify items marked with **[LOW STOCK]**.
+    - List them clearly in the `response` and `speech`.
+    - Set `action` to `NONE`. Do NOT use GET_INFO for listing multiple items.
+    - If no items have this tag, say "Stock looks good.".
 
-**Supported Actions (JSON Output Only):**
+### SUPPORTED ACTIONS
+1. **UPDATE_STOCK**: Adding/Removing items.
+2. **RECORD_SALE**: Selling items.
+3. **GET_INFO**: Questions about SPECIFIC data (stock levels, prices) for a single item.
+4. **NONE**: 
+    - **Usage**: Greetings, Small Talk, **Capability Questions**, **Low Stock Lists**.
+    - **Logic**: 
+        - If "Hello" -> "Namaste! Ready to manage the shop?"
+        - If "How can you help?" -> "I can record your daily sales, update new stock, and check what items are running low."
 
-1.  **UPDATE_STOCK**:
-    - Usage: Adding/Removing items.
-    - Example: "Add 10kg Rice" -> `action: "UPDATE_STOCK", params: { "product": "Rice", "quantity": 10 }`
-
-2.  **RECORD_SALE**:
-    - Usage: Selling items.
-    - Example: "Sold 2 Milk packets" -> `action: "RECORD_SALE", params: { "product": "Milk", "quantity": 2 }`
-
-3.  **GET_INFO**:
-    - Usage: Questions about data.
-    - Example: "How much Sugar is left?" -> `action: "GET_INFO", params: { "query_type": "stock", "product": "Sugar" }`
-
-4.  **NONE**:
-    - Usage: Greetings, Small Talk, Ambiguity.
-    - Example: "Hello" -> `action: "NONE", speech: "Namaste! How can I help your shop today?"`
-
-**Response Structure (Strict JSON, NO Markdown):**
+### RESPONSE FORMAT
 {
-  "type": "intent",
   "action": "UPDATE_STOCK" | "RECORD_SALE" | "GET_INFO" | "NONE",
   "params": { ... },
-  "speech": "The spoken response in the user's language. IMPRESSIVE, WARM, AND NATURAL.",
-  "response": "The visual text response (chat bubble). Same natural language as speech."
+  "speech": "Natural spoken response.",
+  "response": "Visual text response."
 }
 
-**Directives:**
-1. **Multilingual**: Always detect the user's language and generate `speech` AND `response` in that language.
-2. **Ambiguity**: If product or quantity is missing for actions, Action is "NONE" and `response` must ask for the missing info.
-3. **Strict JSON**: Output raw JSON only. Do NOT use markdown code blocks.
-4. **No Tech**: Do not show JSON or parameters in the `response` text. output only natural language.
+### EXAMPLES
+
+**Input:** "Hello, how can you help me?"
+**Output:** {
+  "action": "NONE", 
+  "speech": "Namaste! I am here to help you manage your shop. You can tell me to record sales, add new stock, or check inventory prices.",
+  "response": "Namaste! I can help you:\n1. Record Sales\n2. Add Stock\n3. Check Inventory"
+}
+
+**Input:** "Sold 2 milk"
+**Output:**
+{
+  "action": "RECORD_SALE",
+  "params": { "product": "Milk", "quantity": 2 },
+  "speech": "Added 2 milk packets to the sales record.",
+  "response": "Added 2 milk packets to sales."
+}
 """
 
-def parse_gemini_json(text: str) -> dict:
-    """Helper to cleanly parse JSON from Gemini's output, handling markdown blocks."""
-    try:
-        # First attempt: Clean clean parsing
-        text = text.strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.endswith("```"):
-            text = text[:-3]
-        # Pre-process cleanup for common errors like ""key"
-        text = re.sub(r'""(\w+)"', r'"\1"', text)
-        return json.loads(text.strip())
-    except json.JSONDecodeError as e:
-        logger.warning(f"JSON Parse failed: {e}. Attempting Regex Fallback.")
-        # Fallback 1: Extract JSON block using regex matches { ... }
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(0))
-            except:
-                pass
-        
-        # Fallback 2: Manual extraction of fields if JSON is completely broken
-        # (Desperate attempt to rescue the response text)
-        response_match = re.search(r'"response":\s*"(.*?)"', text)
-        if response_match:
-            return {"response": response_match.group(1), "action": "NONE"}
-            
-        return None
+# ---------------------------------------------------------------------------
+# 2. RESPONSE SCHEMA (Enforces Strict JSON)
+# ---------------------------------------------------------------------------
+# This forces Gemini to return ONLY this structure, no markdown parsing needed.
+RESPONSE_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "action": {
+            "type": "STRING",
+            "enum": ["UPDATE_STOCK", "RECORD_SALE", "GET_INFO", "NONE"]
+        },
+        "params": {
+            "type": "OBJECT",
+            "properties": {
+                "product": {"type": "STRING", "description": "Name of the product capitalized"},
+                "quantity": {"type": "NUMBER", "description": "Numeric quantity"},
+                "unit": {"type": "STRING", "description": "Unit if mentioned (kg, l, packet)"},
+                "query_type": {"type": "STRING", "description": "For GET_INFO: 'stock' or 'price'"}
+            },
+            "nullable": True
+        },
+        "speech": {
+            "type": "STRING", 
+            "description": "Spoken response. Natural, warm, brief. NO MARKDOWN."
+        },
+        "response": {
+            "type": "STRING", 
+            "description": "Visual text bubble. Natural language matching speech."
+        }
+    },
+    "required": ["action", "speech", "response"]
+}
 
+# ---------------------------------------------------------------------------
+# 3. MAIN CHAT PROCESSOR
+# ---------------------------------------------------------------------------
 async def process_chat_message(message: str, history: list = [], language: str = "en", inventory: list = []) -> dict:
-    if not api_key:
-        logger.error("Gemini API key not configured")
+    if not client:
         return {"response": "System Error: API Key missing.", "action": "NONE"}
 
-    # Convert history to Gemini format (Standard Content Item format)
-    gemini_history = []
-    for msg in history:
-        role = "user" if msg.get("role") == "user" else "model"
-        gemini_history.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content"))]))
+    try:
+        # 1. Prepare History for Gemini
+        gemini_history = []
+        for msg in history:
+            role = "user" if msg.get("role") == "user" else "model"
+            gemini_history.append(types.Content(
+                role=role, 
+                parts=[types.Part.from_text(text=msg.get("content"))]
+            ))
 
-    logger.info(f"Received Inventory Context with {len(inventory)} items.")
+        # 2. Format Inventory Context
+        # We inject this dynamically into the prompt so the AI knows what's in the shop
+        inventory_context = "Current Shop Inventory:\n"
+        if inventory:
+            for item in inventory:
+                name = item.get('name', 'Unknown')
+                # Handle if name is a dict (e.g., multilingual names)
+                if isinstance(name, dict):
+                    name = name.get('en', list(name.values())[0])
+                
+                stock = item.get('stock', 0)
+                max_stock = item.get('max_stock', 50)
+                # Dashboard Logic: Low if <= 50% of max_stock
+                is_low = stock <= (max_stock * 0.5)
+                
+                shelf = item.get('shelf_position', 'N/A')
+                status_tag = " [LOW STOCK]" if is_low else ""
+                inventory_context += f"- {name}: {stock} (Shelf: {shelf}){status_tag}\n"
+        else:
+            inventory_context += "(Inventory is empty)"
 
-    # Format Inventory Context
-    inventory_context = "Current Inventory:\n"
-    if inventory:
-        for item in inventory:
-            name_en = item.get('name', {}).get('en', 'Unknown') if isinstance(item.get('name'), dict) else item.get('name', 'Unknown')
-            stock = item.get('stock', 0)
-            inventory_context += f"- {name_en}: {stock}\n"
-    else:
-        inventory_context += "(No inventory data available)"
+        logger.info(f"Inventory Context items: {len(inventory)}")
 
-    prompt = f"""
+        # 3. Construct the dynamic user prompt
+        full_prompt = f"""
 {inventory_context}
 
-User: {message}
-Language: {language}
+User Input: "{message}"
+Detected Language Context: {language}
 """
 
-    try:
-        # Use simple generate_content with history + prompt?
-        # The new SDK handles chat differently. We can create a chat session or just append history to prompt.
-        # But `client.chats.create` is the way.
-        
+        # 4. Create Chat Session
+        # Note: 'gemini-1.5-flash' is the standard fast model. 
+        # Update model name if you have access to specific versions like 'gemini-2.5-flash-lite'
         chat = client.chats.create(
-            model='gemini-2.5-flash-lite',
+            model='gemini-2.5-flash-lite', 
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                response_mime_type="application/json"
+                response_mime_type="application/json",
+                response_schema=RESPONSE_SCHEMA, 
+                temperature=0.3, # Low temperature for accurate logic
             ),
             history=gemini_history
         )
 
-        response = chat.send_message(prompt)
+        # 5. Send Message
+        response = chat.send_message(full_prompt)
+        raw_text = response.text
 
-        text_response = ""
+        # 6. Parse JSON (Guaranteed by Schema)
         try:
-            text_response = response.text.strip()
-        except ValueError:
-             logger.warning("Gemini response blocked or empty.")
-             return {"response": "I'm sorry, I couldn't generate a response.", "action": "NONE"}
-             
-        logger.info(f"AI Raw Response: {text_response}")
+            data = json.loads(raw_text)
+        except json.JSONDecodeError:
+            logger.error(f"JSON Parse Failed. Raw: {raw_text}")
+            return {
+                "response": "I understood, but had a technical glitch.", 
+                "speech": "Technical error.", 
+                "action": "NONE"
+            }
 
-        data = parse_gemini_json(text_response)
-        
-        # Fallback if parsing fails
-        if not data:
-             return {"response": text_response, "speech": text_response, "action": "NONE"}
+        logger.info(f"AI Intent: {data.get('action')} | Params: {data.get('params')}")
 
-        # Return the structured intent directly to the frontend
+        # 7. Return Clean Data
         return {
-            "response": data.get("response") or data.get("content", ""),
+            "response": data.get("response", ""),
             "speech": data.get("speech", ""),
             "action": data.get("action", "NONE"),
             "params": data.get("params", {})
@@ -171,7 +203,29 @@ Language: {language}
         logger.error(f"Global Error in process_chat_message: {e}")
         traceback.print_exc()
         return {
-            "response": "I'm having trouble processing that request.",
-            "speech": "Error processing request.",
+            "response": "I'm having trouble connecting right now.",
+            "speech": "Connection error, please try again.",
             "action": "NONE"
         }
+
+# ---------------------------------------------------------------------------
+# TEST RUN (Optional)
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    import asyncio
+    
+    # Mock Inventory
+    mock_inventory = [
+        {"name": "Rice", "stock": 50},
+        {"name": "Sugar", "stock": 10},
+        {"name": "Milk", "stock": 5}
+    ]
+
+    # Test Function
+    async def test():
+        print("--- Testing KiranaAI ---")
+        
+        # Test 1: Sale (Hinglish)
+        res = await process_chat_message("what items are low?", inventory=mock_inventory, language="en")
+        print(f"\nUser: what items are low?\nAI: {json.dumps(res, indent=2)}")
+    asyncio.run(test())

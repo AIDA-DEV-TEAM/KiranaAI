@@ -320,10 +320,10 @@ const StockScanningView = () => {
                     <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
                         <Upload size={24} className="text-blue-700 dark:text-blue-400" />
                     </div>
-                    Smart Bill Entry
+                    Automated Stock Entry
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-muted-foreground mb-6">
-                    Scan a distributor bill to automatically update inventory. Review distinct items before saving.
+                    Scan purchase bills or individual products to instantly restock. Automatically detects items, updates prices, and increments quantities.
                 </p>
 
                 {billError && (
