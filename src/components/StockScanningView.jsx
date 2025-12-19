@@ -535,7 +535,7 @@ const StockScanningView = () => {
                                     {shelfResult.filter(i => i.lowStock).length > 0 ? (
                                         <div className="flex flex-wrap gap-1">
                                             {shelfResult.filter(i => i.lowStock).map((item, i) => (
-                                                <span key={i} className="text-[10px] font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800">
+                                                <span key={i} className="text-[10px] font-bold bg-orange-100 dark:bg-orange-900/30 text-black dark:text-white px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800">
                                                     {item.name}
                                                 </span>
                                             ))}
@@ -561,7 +561,7 @@ const StockScanningView = () => {
                                 </p>
                                 <div className="flex flex-wrap gap-2 mt-1">
                                     {shelfResult.filter(i => i.isMisplaced).map((item, idx) => (
-                                        <span key={idx} className="text-xs bg-red-800 text-white px-3 py-1.5 rounded-lg font-bold shadow-md">
+                                        <span key={idx} className="text-xs bg-red-200 text-black px-3 py-1.5 rounded-lg font-bold shadow-md">
                                             {item.name}
                                         </span>
                                     ))}
@@ -638,7 +638,6 @@ const StockScanningView = () => {
                                     }}
                                     className="flex-1 py-4 bg-purple-700 dark:bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-800 dark:hover:bg-purple-700 active:scale-95 transition-all flex items-center justify-center gap-2 text-base"
                                 >
-                                    <Save size={20} />
                                     CONFIRM & UPDATE LOCATIONS
                                 </button>
                                 <button
