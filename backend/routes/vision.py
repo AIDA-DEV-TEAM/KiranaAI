@@ -54,7 +54,7 @@ async def process_bill(file: UploadFile = File(...)):
         """
         
         response = client.models.generate_content(
-            model='gemini-1.5-flash', # Switched to stable version
+            model='gemini-1.5-flash-002', # Updated to 002 for better stability
             contents=[image, prompt],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json" # NATIVE JSON ENFORCEMENT
@@ -103,7 +103,7 @@ async def analyze_shelf(file: UploadFile = File(...)):
         """
         
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-1.5-flash-002',
             contents=[image, prompt],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json" # NATIVE JSON ENFORCEMENT
