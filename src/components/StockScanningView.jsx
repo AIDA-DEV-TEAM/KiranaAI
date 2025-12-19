@@ -17,7 +17,8 @@ const StockScanningView = () => {
     const [billData, setBillData] = useState([]); // [{ name, quantity, price, matchedProductId, isNew }]
     const [shelfResult, setShelfResult] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [billError, setBillError] = useState(null);
+    const [shelfError, setShelfError] = useState(null);
     const [isReviewing, setIsReviewing] = useState(false);
     const [commitLoading, setCommitLoading] = useState(false);
 
@@ -79,7 +80,9 @@ const StockScanningView = () => {
         if (!file) return;
 
         setLoading(true);
-        setError(null);
+        setLoading(true);
+        if (type === 'ocr') setBillError(null);
+        else setShelfError(null);
         setOcrResult(null);
         setShelfResult(null);
         setIsReviewing(false);
@@ -98,14 +101,16 @@ const StockScanningView = () => {
                 console.error("JSON parse error:", e);
                 // Fallback if AI returns text instead of JSON
                 parsedData = [];
-                setError("Could not parse image data. Please try again.");
+                parsedData = [];
+                if (type === 'ocr') setBillError("Could not read the document. Please try again.");
+                else setShelfError("Could not analyze the image. Please try again.");
                 return;
             }
 
             if (type === 'ocr') {
                 const items = Array.isArray(parsedData) ? parsedData : [];
                 if (items.length === 0) {
-                    setError("Oops! We couldn't find any items in that image. Please try capturing or uploading a clear photo of the bill.");
+                    setBillError("Oops! We couldn't find any items in that bill. Please try again.");
                     return;
                 }
                 const matchedMessages = matchProducts(items);
@@ -114,7 +119,7 @@ const StockScanningView = () => {
                 setIsReviewing(true);
             } else {
                 if (!parsedData || (Array.isArray(parsedData) && parsedData.length === 0)) {
-                    setError("We couldn't spot any products on the shelf. Please ensure the shelves are well-lit and try again.");
+                    setShelfError("We couldn't spot any products on the shelf. Please ensure the shelves are well-lit.");
                     return;
                 }
 
@@ -178,7 +183,8 @@ const StockScanningView = () => {
             }
         } catch (err) {
             console.error("Vision API Error:", err);
-            setError("Failed to process image. Please try again.");
+            if (type === 'ocr') setBillError(err.response?.data?.detail || "Failed to process bill. Please try again.");
+            else setShelfError(err.response?.data?.detail || "Failed to process shelf image. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -203,7 +209,8 @@ const StockScanningView = () => {
         } catch (error) {
             console.error("Gallery selection failed:", error);
             if (error && error.message !== 'User cancelled photos app') {
-                setError("Gallery error: " + (error.message || "Unknown error"));
+                if (type === 'ocr') setBillError("Gallery error: " + (error.message || "Unknown error"));
+                else setShelfError("Gallery error: " + (error.message || "Unknown error"));
             }
         }
     };
@@ -227,7 +234,8 @@ const StockScanningView = () => {
         } catch (error) {
             console.error("Camera capture failed:", error);
             if (error && error.message !== 'User cancelled photos app') {
-                setError("Camera error: " + (error.message || "Unknown error"));
+                if (type === 'ocr') setBillError("Camera error: " + (error.message || "Unknown error"));
+                else setShelfError("Camera error: " + (error.message || "Unknown error"));
             }
         }
     };
@@ -317,6 +325,13 @@ const StockScanningView = () => {
                 <p className="text-sm text-gray-600 dark:text-muted-foreground mb-6">
                     Scan a distributor bill to automatically update inventory. Review distinct items before saving.
                 </p>
+
+                {billError && (
+                    <div className="mb-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-2 text-red-700 dark:text-red-400 animate-in slide-in-from-top-2">
+                        <AlertCircle size={18} />
+                        <p className="text-sm font-medium">{billError}</p>
+                    </div>
+                )}
 
                 <div className="flex gap-4">
                     {/* Camera Option */}
@@ -495,6 +510,13 @@ const StockScanningView = () => {
                     Analyze shelf layout, find misplaced items, and bulk-update product locations.
                 </p>
 
+                {shelfError && (
+                    <div className="mb-4 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-2 text-red-700 dark:text-red-400 animate-in slide-in-from-top-2">
+                        <AlertCircle size={18} />
+                        <p className="text-sm font-medium">{shelfError}</p>
+                    </div>
+                )}
+
                 <div className="flex gap-4 mb-6">
                     {/* Camera */}
                     <button
@@ -614,12 +636,7 @@ const StockScanningView = () => {
                 </div>
             )}
 
-            {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800 flex items-center gap-3 text-red-700 dark:text-red-400">
-                    <AlertCircle size={20} />
-                    <p className="text-sm font-medium">{error}</p>
-                </div>
-            )}
+
         </div>
     );
 };

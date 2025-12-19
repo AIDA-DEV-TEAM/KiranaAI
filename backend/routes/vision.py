@@ -67,9 +67,9 @@ async def process_bill(file: UploadFile = File(...)):
         return {"data": data}
 
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse model response as JSON")
+        raise HTTPException(status_code=500, detail="We couldn't read the bill details. Please ensure the bill is well-lit and not blurry.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OCR failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Something went wrong while scanning the bill. Please try again.")
 
 @router.post("/shelf")
 async def analyze_shelf(file: UploadFile = File(...)):
@@ -115,6 +115,6 @@ async def analyze_shelf(file: UploadFile = File(...)):
         return {"data": data}
 
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse model response as JSON")
+        raise HTTPException(status_code=500, detail="We couldn't understand the shelf layout from this image. Please try taking a closer photo.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Shelf analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Something went wrong while analyzing the shelf. Please try again.")
