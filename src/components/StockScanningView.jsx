@@ -518,58 +518,7 @@ const StockScanningView = () => {
                 {shelfResult && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
 
-                        {/* 1. Insights Dashboard */}
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* Dominant Category */}
-                            <div className="p-4 bg-gray-50 dark:bg-muted/20 rounded-xl border border-gray-200 dark:border-border shadow-sm">
-                                <span className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-widest">Dominant Category</span>
-                                <div className="text-2xl font-black text-blue-900 dark:text-blue-400 mt-1">
-                                    {shelfResult.reduce((a, b, i, arr) => (arr.filter(v => v.category === a).length >= arr.filter(v => v.category === b).length ? a : b), null)?.category || "Mixed"}
-                                </div>
-                            </div>
 
-                            {/* Stock Health */}
-                            <div className="p-4 bg-gray-50 dark:bg-muted/20 rounded-xl border border-gray-200 dark:border-border shadow-sm flex flex-col justify-between">
-                                <span className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-widest">Stock Health</span>
-                                <div className="mt-1">
-                                    {shelfResult.filter(i => i.lowStock).length > 0 ? (
-                                        <div className="flex flex-wrap gap-1">
-                                            {shelfResult.filter(i => i.lowStock).map((item, i) => (
-                                                <span key={i} className="text-[10px] font-bold bg-orange-100 dark:bg-orange-900/30 text-black dark:text-white px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800">
-                                                    {item.name}
-                                                </span>
-                                            ))}
-                                            <span className="text-xs font-bold text-red-600 dark:text-red-400 ml-1">Low</span>
-                                        </div>
-                                    ) : (
-                                        <span className="text-xl font-black text-green-600 dark:text-green-400">All Good</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 2. Misplaced Items Alert */}
-                        {shelfResult.some(i => i.isMisplaced) && (
-                            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-200 dark:border-red-800 flex flex-col gap-2 shadow-sm">
-                                <div className="flex items-center gap-2">
-                                    <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
-                                    <h4 className="font-bold text-black dark:text-white text-base">Misplaced Items Detected</h4>
-                                </div>
-
-                                <p className="text-sm text-black dark:text-white font-bold">
-                                    The following items seem out of place for a <strong className="underline decoration-red-500 font-bold">{shelfResult[0]?.category}</strong> shelf:
-                                </p>
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                    {shelfResult.filter(i => i.isMisplaced).map((item, idx) => (
-                                        <span key={idx} className="text-xs bg-red-200 text-black px-3 py-1.5 rounded-lg font-bold shadow-md">
-                                            {item.name}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 3. Item List & Location Sync */}
                         <div className="space-y-4">
                             <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mt-4">
                                 <div className="max-h-60 overflow-y-auto bg-gray-50 dark:bg-muted/10">
