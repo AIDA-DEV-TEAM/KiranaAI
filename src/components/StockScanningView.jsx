@@ -549,7 +549,7 @@ const StockScanningView = () => {
                                                             </select>
                                                         </>
                                                     ) : (
-                                                        <span className="px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg text-xs font-bold flex items-center gap-1">
+                                                        <span className="px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-300 border border-green-200 dark:border-green-800 rounded-lg text-xs font-bold flex items-center gap-1">
                                                             <CheckCircle size={12} />
                                                             {currentShelf}
                                                         </span>
