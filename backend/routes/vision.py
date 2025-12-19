@@ -1,9 +1,10 @@
 import os
+import json
+import io
 from google import genai
 from google.genai import types
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from PIL import Image
-import io
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,40 +12,62 @@ load_dotenv()
 router = APIRouter(prefix="/vision", tags=["vision"])
 
 api_key = os.getenv("GEMINI_API_KEY")
+
+# Initialize client conditionally
 client = None
-if not api_key:
-    print("Warning: GEMINI_API_KEY not found in environment variables")
-else:
+if api_key:
     client = genai.Client(api_key=api_key)
+else:
+    print("Warning: GEMINI_API_KEY not found")
+
+# Helper function to clean generic markdown response if it slips through
+def clean_json_string(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    if text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()
 
 @router.post("/ocr")
 async def process_bill(file: UploadFile = File(...)):
     if not client:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+    
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
         
         prompt = """
-        Analyze this bill of lading / invoice image. Extract the list of items.
+        You are an expert OCR and Data Extraction Specialist.
+        Analyze the provided bill of lading or invoice image.
         
-        Return a Strict JSON array of objects with these fields:
-        - "name": The product description or name (string).
-        - "quantity": The quantity purchased (number). If unclear, default to 1.
-        - "unit_price": The price per unit (number).
-        - "total_price": The total line item cost (number).
-
-        Handle handwritten text and poor lighting.
-        If a field is missing, use reasonable defaults or null.
+        Extract the line items into a pure JSON array. Each object must contain:
+        - "name": Full product description/name.
+        - "quantity": The count/qty purchased (number). Default to 1 if not explicitly stated.
+        - "unit_price": The price per single unit (number). If only total is shown, calculate unit price.
         
-        Do not include any markdown formatting (like ```json). Return ONLY the JSON array.
+        Handle handwritten text, poor lighting, and Indian currency formats.
+        Output strictly the JSON array.
         """
         
         response = client.models.generate_content(
-            model='gemini-2.5-flash-lite',
-            contents=[image, prompt]
+            model='gemini-1.5-flash', # Switched to stable version
+            contents=[image, prompt],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json" # NATIVE JSON ENFORCEMENT
+            )
         )
-        return {"data": response.text.strip()}
+        
+        # Parse string to JSON object before returning
+        cleaned_text = clean_json_string(response.text)
+        data = json.loads(cleaned_text)
+        return {"data": data}
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse model response as JSON")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR failed: {str(e)}")
 
@@ -52,33 +75,46 @@ async def process_bill(file: UploadFile = File(...)):
 async def analyze_shelf(file: UploadFile = File(...)):
     if not client:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+    
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
         
         prompt = """
-        You are an Expert Retail Inventory Manager / Planogram Specialist.
-        Analyze the provided image of a retail shelf.
-        
-        Extract the visible products into a structured JSON array.
-        For each product, provide:
-        - "name": Specific product name/brand.
-        - "count": Count of this item visible.
-        - "category": Broad category (e.g., "Beverage", "Snacks").
-        - "low_stock": Boolean. Set to true if there is significant empty shelf space for this product, suggesting it needs restocking.
-        - "detected_shelf_id": The literal text of the shelf label (e.g., 'A1', 'B2') that this product is physically sitting on or closest to. If no label is visible, return null.
-        
-        Analyze the shelf arrangement:
-        - "misplaced": Boolean. Set to true if this item looks clearly out of place.
-        - "suggested_shelf": If misplaced, suggest the ID of a shelf in the image (e.g., "A1", "B2") where it SHOULD be. If no IDs are visible, suggest a logical location.
-        
-        Strict JSON array output. No markdown.
+        You are a Retail Planogram Auditor and Spatial Analysis AI. 
+        Analyze the shelf image to create a precise digital twin of the inventory.
+
+        ### Spatial Reasoning Logic:
+        1.  **Anchor Identification:** Scan the horizontal shelf edges (rails) for alphanumeric location labels (e.g., 'A1', 'B-2'). 
+        2.  **Zone Definition:** The label on a rail defines the ID for the **entire row of products sitting directly on that shelf**.
+        3.  **Product Scanning:** Identify every visible item.
+
+        ### Output Schema (JSON Array):
+        Extract all visible products into a flat JSON array:
+        - "detected_shelf_id": (string or null) The label found on the shelf rail. 
+            - CRITICAL: If a label 'A1' is visible anywhere on a rail, apply 'A1' to ALL items on that level.
+            - If no label is visible for a specific row, return null for those items.
+        - "category": (string) General category (e.g., "Soda", "Chips").
+        - "name": (string) Precise brand and variant (e.g., "Coca-Cola Zero Sugar 300ml").
+
+        ### Constraints:
+        - Output strictly valid JSON.
+        - Do not invent shelf IDs if they are physically not visible in the image.
         """
         
         response = client.models.generate_content(
-            model='gemini-2.5-flash-lite',
-            contents=[image, prompt]
+            model='gemini-1.5-flash',
+            contents=[image, prompt],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json" # NATIVE JSON ENFORCEMENT
+            )
         )
-        return {"data": response.text.strip()}
+        
+        cleaned_text = clean_json_string(response.text)
+        data = json.loads(cleaned_text)
+        return {"data": data}
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse model response as JSON")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Shelf analysis failed: {str(e)}")
