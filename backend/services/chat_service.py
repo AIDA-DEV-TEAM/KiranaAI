@@ -35,17 +35,21 @@ Your mission is to provide an impressive, seamless voice experience that feels t
 2. **Language Mirroring (CRITICAL)**: You MUST reply in the EXACT same language/dialect as the user's input.
     - If user speaks **Hindi**, `speech` MUST be in Hindi.
     - If user speaks **Telugu**, `speech` MUST be in Telugu.
-3. **Be Specific**: If the user asks "How can you help?", do NOT ask them back. Instead, listed your services: **Recording Sales, Updating Stock, and Checking Inventory.**
+3. **Be Specific**: If the user asks "How can you help?", do NOT ask them back. Instead, list your services: **Recording Sales, Updating Stock, Checking Inventory, and Finding Item Locations.**
 4. **Low Stock Logic**: If the user asks for "low stock" or "running low", analyze the provided Inventory Context.
     - Identify items marked with **[LOW STOCK]**.
     - List them clearly in the `response` and `speech`.
     - Set `action` to `NONE`. Do NOT use GET_INFO for listing multiple items.
     - If no items have this tag, say "Stock looks good.".
+5. **Location/Shelf Logic**: If the user asks "Where is [Product]?" or "Location of [Product]":
+    - Look at the `Inventory Context` for the item's `(Shelf: X)` data.
+    - Reply with the EXACT shelf position.
+    - Set `action` to `GET_INFO` with `query_type: "location"`.
 
 ### SUPPORTED ACTIONS
 1. **UPDATE_STOCK**: Adding/Removing items.
 2. **RECORD_SALE**: Selling items.
-3. **GET_INFO**: Questions about SPECIFIC data (stock levels, prices, shelf positions) for a single item.
+3. **GET_INFO**: Questions about SPECIFIC data (stock levels, prices, **Location/Shelf**) for a single item.
 4. **NONE**: 
     - **Usage**: Greetings, Small Talk, **Capability Questions**, **Low Stock Lists**.
     - **Logic**: 
@@ -66,7 +70,7 @@ Your mission is to provide an impressive, seamless voice experience that feels t
 **Output:** {
   "action": "NONE", 
   "speech": "Namaste! I am here to help you manage your shop. You can tell me to record sales, add new stock, or check inventory prices.",
-  "response": "Namaste! I can help you:\n1. Record Sales\n2. Add Stock\n3. Check Inventory"
+  "response": "Namaste! I can help you:\\n1. Record Sales\\n2. Add Stock\\n3. Check Inventory"
 }
 
 **Input:** "Sold 2 milk"
@@ -76,6 +80,15 @@ Your mission is to provide an impressive, seamless voice experience that feels t
   "params": { "product": "Milk", "quantity": 2 },
   "speech": "Added 2 milk packets to the sales record.",
   "response": "Added 2 milk packets to sales."
+}
+
+**Input:** "Where is sugar?"
+**Output:**
+{
+  "action": "GET_INFO",
+  "params": { "product": "Sugar", "query_type": "location" },
+  "speech": "Sugar is kept at Shelf B2.",
+  "response": "Sugar is at Shelf B2."
 }
 """
 
@@ -96,7 +109,7 @@ RESPONSE_SCHEMA = {
                 "product": {"type": "STRING", "description": "Name of the product capitalized"},
                 "quantity": {"type": "NUMBER", "description": "Numeric quantity"},
                 "unit": {"type": "STRING", "description": "Unit if mentioned (kg, l, packet)"},
-                "query_type": {"type": "STRING", "description": "For GET_INFO: 'stock' or 'price'"}
+                "query_type": {"type": "STRING", "description": "For GET_INFO: 'stock', 'price', 'location', or 'shelf'"}
             },
             "nullable": True
         },
@@ -225,7 +238,14 @@ if __name__ == "__main__":
     async def test():
         print("--- Testing KiranaAI ---")
         
-        # Test 1: Sale (Hinglish)
+        # Test 1: Location Query
+        print("\n--- Test: Location Query ---")
         res = await process_chat_message("where is milk?", inventory=mock_inventory, language="en")
-        print(f"\nUser: where is milk?\nAI: {json.dumps(res, indent=2)}")
+        print(f"User: where is milk?\nAI: {json.dumps(res, indent=2)}")
+
+        # Test 2: Location Query (Hindi Context)
+        print("\n--- Test: Location Query (Hindi) ---")
+        res2 = await process_chat_message("doodh kahan hai?", inventory=mock_inventory, language="hi")
+        print(f"User: doodh kahan hai?\nAI: {json.dumps(res2, indent=2)}")
+
     asyncio.run(test())
