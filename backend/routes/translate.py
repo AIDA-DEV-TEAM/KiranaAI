@@ -23,10 +23,19 @@ class TranslateRequest(BaseModel):
 class TranslateResponse(BaseModel):
     translations: dict[str, str]
 
+# In-memory cache: {(text, tuple(sorted(targets))): translations_dict}
+translation_cache = {}
+
 @router.post("/", response_model=TranslateResponse)
 async def translate_text(request: TranslateRequest):
     if not client:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+
+    # Check cache
+    cache_key = (request.text.strip().lower(), tuple(sorted(request.target_languages)))
+    if cache_key in translation_cache:
+        print(f"Cache hit for: {request.text}")
+        return {"translations": translation_cache[cache_key]}
 
     try:
         # model = genai.GenerativeModel('gemini-flash-latest', generation_config={"response_mime_type": "application/json"})
@@ -50,11 +59,15 @@ async def translate_text(request: TranslateRequest):
         # Parse JSON
         try:
             translations = json.loads(text_response)
+            translation_cache[cache_key] = translations
             return {"translations": translations}
         except json.JSONDecodeError:
             # Fallback cleanup
             clean_text = text_response.replace("```json", "").replace("```", "").strip()
             translations = json.loads(clean_text)
+            
+            # Update cache
+            translation_cache[cache_key] = translations
             return {"translations": translations}
 
     except Exception as e:
