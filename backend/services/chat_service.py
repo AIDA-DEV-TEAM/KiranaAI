@@ -164,7 +164,7 @@ Detected Language Context: {language}
         # Note: 'gemini-1.5-flash' is the standard fast model. 
         # Update model name if you have access to specific versions like 'gemini-2.5-flash-lite'
         chat = client.chats.create(
-            model='gemini-2.5-flash-lite', 
+            model='gemini-3-flash-preview', 
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 response_mime_type="application/json",
