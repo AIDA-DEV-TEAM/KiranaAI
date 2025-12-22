@@ -124,6 +124,13 @@ const StockScanningView = () => {
                 }
 
                 // Smart Shelf Organizer Logic
+                const normalizeShelf = (id) => {
+                    if (!id) return '';
+                    // Remove standard separators and lowercase
+                    const clean = id.toString().replace(/[\s\-_]/g, '').toUpperCase();
+                    return SHELF_POSITIONS.find(pos => pos.toUpperCase() === clean) || '';
+                };
+
                 const auditedItems = parsedData.map(item => {
                     // Match with inventory
                     const bestMatch = inventory.find(p => {
@@ -132,18 +139,19 @@ const StockScanningView = () => {
                         return pName.includes(iName) || iName.includes(pName);
                     });
 
-                    // Determine Category: Use matched product's category if available (source of truth), else AI guess, else Uncategorized
                     const resolvedCategory = bestMatch?.category || item.category || 'Uncategorized';
 
-                    // Validate suggested/detected shelves against allowed positions
-                    const validSuggestion = SHELF_POSITIONS.includes(item.suggested_shelf) ? item.suggested_shelf : '';
-                    const detectedShelf = SHELF_POSITIONS.includes(item.detected_shelf_id) ? item.detected_shelf_id : '';
+                    // Robust Shelf ID matching
+                    // AI might return 'A-1', 'a 1' -> Normalize to 'A1'
+                    const rawDetected = item.detected_shelf_id;
+                    const detectedShelf = normalizeShelf(rawDetected);
                     const currentShelf = bestMatch?.shelf_position || '';
 
-                    // Logic: Misplaced if AI sees it on a specifically labelled shelf that MATCHES our valid shelf IDs, but differs from inventory record.
-                    // Or if AI explicitly flags 'misplaced' (fallback).
-                    const isLocationMismatch = detectedShelf && currentShelf && detectedShelf !== currentShelf;
-                    const isMisplaced = isLocationMismatch || (item.misplaced === true && !!validSuggestion);
+                    // Strict Location Mismatch:
+                    // ONLY if we definitively found a shelf label (detectedShelf)
+                    // AND we know where the product should be (currentShelf)
+                    // AND they are different.
+                    const isMisplaced = !!detectedShelf && !!currentShelf && detectedShelf !== currentShelf;
 
                     return {
                         ...item,
@@ -153,33 +161,12 @@ const StockScanningView = () => {
                         name: bestMatch ? (typeof bestMatch.name === 'object' ? (bestMatch.name.en || Object.values(bestMatch.name)[0]) : bestMatch.name) : item.name,
                         category: resolvedCategory,
                         isMisplaced: isMisplaced,
-                        lowStock: item.low_stock === true,
-                        suggestedShelf: validSuggestion,
                         detectedShelf: detectedShelf,
-                        targetShelf: isMisplaced ? (detectedShelf || validSuggestion) : currentShelf
+                        targetShelf: isMisplaced ? detectedShelf : currentShelf
                     };
                 });
 
-                // Post-process: Refine Misplaced based on Dominant Category
-                // 1. Calculate Dominant Category
-                const catCounts = {};
-                auditedItems.forEach(i => {
-                    const cat = i.category;
-                    catCounts[cat] = (catCounts[cat] || 0) + 1;
-                });
-                const dominantCategory = Object.keys(catCounts).reduce((a, b) => catCounts[a] > catCounts[b] ? a : b, 'Uncategorized');
-
-                // 2. Mark Misplaced if category mismatch
-                const finalItems = auditedItems.map(item => {
-                    const isCategoryMismatch = dominantCategory !== 'Uncategorized' && item.category !== 'Uncategorized' && item.category !== dominantCategory;
-
-                    return {
-                        ...item,
-                        isMisplaced: item.isMisplaced || isCategoryMismatch
-                    };
-                });
-
-                setShelfResult(finalItems);
+                setShelfResult(auditedItems);
             }
         } catch (err) {
             console.error("Vision API Error:", err);
