@@ -45,7 +45,7 @@ Your mission is to provide an impressive, seamless voice experience that feels t
 ### SUPPORTED ACTIONS
 1. **UPDATE_STOCK**: Adding/Removing items.
 2. **RECORD_SALE**: Selling items.
-3. **GET_INFO**: Questions about SPECIFIC data (stock levels, prices) for a single item.
+3. **GET_INFO**: Questions about SPECIFIC data (stock levels, prices, shelf positions) for a single item.
 4. **NONE**: 
     - **Usage**: Greetings, Small Talk, **Capability Questions**, **Low Stock Lists**.
     - **Logic**: 
@@ -216,9 +216,9 @@ if __name__ == "__main__":
     
     # Mock Inventory
     mock_inventory = [
-        {"name": "Rice", "stock": 50},
-        {"name": "Sugar", "stock": 10},
-        {"name": "Milk", "stock": 5}
+        {"name": "Rice", "stock": 50, "shelf_position": "A1"},
+        {"name": "Sugar", "stock": 10, "shelf_position": "B2"},
+        {"name": "Milk", "stock": 5, "shelf_position": "C3"}
     ]
 
     # Test Function
@@ -226,6 +226,6 @@ if __name__ == "__main__":
         print("--- Testing KiranaAI ---")
         
         # Test 1: Sale (Hinglish)
-        res = await process_chat_message("what items are low?", inventory=mock_inventory, language="en")
-        print(f"\nUser: what items are low?\nAI: {json.dumps(res, indent=2)}")
+        res = await process_chat_message("where is milk?", inventory=mock_inventory, language="en")
+        print(f"\nUser: where is milk?\nAI: {json.dumps(res, indent=2)}")
     asyncio.run(test())
