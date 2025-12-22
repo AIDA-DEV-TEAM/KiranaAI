@@ -29,7 +29,7 @@ async def translate_text(request: TranslateRequest):
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
 
     try:
-        # model = genai.GenerativeModel('gemini-2.5-flash', generation_config={"response_mime_type": "application/json"})
+        # model = genai.GenerativeModel('gemini-flash-latest', generation_config={"response_mime_type": "application/json"})
         
         prompt = f"""
         Translate the following product name into these languages: {', '.join(request.target_languages)}.
@@ -41,7 +41,7 @@ async def translate_text(request: TranslateRequest):
         """
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash-lite',
+            model='gemini-flash-latest',
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
@@ -59,7 +59,6 @@ async def translate_text(request: TranslateRequest):
 
     except Exception as e:
         print(f"Translation Error: {e}")
-        # Return empty dict on error to not block UI, or 500? 
-        # Better to return partial or error effectively. 
-        # For now, 500 to signal retry or failure.
-        raise HTTPException(status_code=500, detail=str(e))
+        # Fallback: return original text for all languages
+        fallback_translations = {lang: request.text for lang in request.target_languages}
+        return {"translations": fallback_translations}
